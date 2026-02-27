@@ -1,0 +1,15 @@
+*.o
+*.exe
+*.out
+/bin
+
+
+Debug e Profiling
+
+vgcore.*
+valgrind-report.txt
+
+OS
+
+.DS_Store
+Thumbs.db
