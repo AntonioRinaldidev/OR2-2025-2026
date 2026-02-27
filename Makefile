@@ -1,7 +1,12 @@
-# --- Configurazione ---
+# --- Configurazione CPLEX (Mac ARM64) ---
+CPLEX_PATH    := /Applications/CPLEX_Studio2211/cplex
+CPLEX_INCLUDE := $(CPLEX_PATH)/include/ilcplex
+CPLEX_LIB     := $(CPLEX_PATH)/lib/arm64_osx/static_pic
+
+# --- Configurazione Standard ---
 CC      := gcc
-CFLAGS  := -Wall -Wextra -O0 -g -Iinclude -fsanitize=address -std=c11
-LDFLAGS := -lm -fsanitize=address
+CFLAGS  := -Wall -Wextra -O0 -g -Iinclude -I$(CPLEX_INCLUDE) -fsanitize=address -std=c11
+LDFLAGS := -L$(CPLEX_LIB) -lcplex -lpthread -lm -ldl -fsanitize=address
 
 # --- Cartelle ---
 SRC_DIR := src

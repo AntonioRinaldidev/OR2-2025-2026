@@ -2,6 +2,8 @@
 
 This repository contains the implementation of various algorithms and mathematical models developed for the **Operations Research 2** course (2025/2026). All projects are implemented in **C** with a focus on computational efficiency and memory safety.
 
+Focus of the course is the Travel Salesman Problem, using undirected graphs
+
 ---
 
 ## 🏛️ Course Information
