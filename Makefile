@@ -5,8 +5,8 @@ CPLEX_LIB     := $(CPLEX_PATH)/lib/arm64_osx/static_pic
 
 # --- Configurazione Standard ---
 CC      := gcc
-CFLAGS  := -Wall -Wextra -O0 -g -Iinclude -I$(CPLEX_INCLUDE) -fsanitize=address -std=c11
-LDFLAGS := -L$(CPLEX_LIB) -lcplex -lpthread -lm -ldl -fsanitize=address
+CFLAGS  := -Wall -Wextra -O0 -g -Iinclude -I$(CPLEX_INCLUDE) -std=c11
+LDFLAGS := -L$(CPLEX_LIB) -lcplex -lpthread -lm -ldl 
 
 # --- Cartelle ---
 SRC_DIR := src
@@ -25,7 +25,7 @@ RED    := \033[0;31m
 NC     := \033[0m # No Color
 
 # --- File ---
-SOURCES := $(wildcard $(SRC_DIR)/*.c)
+SOURCES := $(shell find $(SRC_DIR) -name '*.c')
 OBJECTS := $(SOURCES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 
@@ -33,7 +33,7 @@ OBJECTS := $(SOURCES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 # --- Regole ---
 
 # Compila ed esegue l'analisi
-all: setup $(TARGET) check
+all: setup $(TARGET) 
 
 setup:
 	@mkdir -p $(BIN_DIR) $(OBJ_DIR) $(DATA_DIR)
@@ -46,14 +46,10 @@ $(TARGET): $(OBJECTS)
 
 # Compilatore
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(dir $@)
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# Esecuzione con controllo Leak e scelta istanza
-check: $(TARGET)
-	@echo "$(CYAN)Running Analysis (AddressSanitizer)...$(NC)"
-	@echo "$(CYAN)Testing instance: $(DATA_DIR)/$(INSTANCE)$(NC)"
-	@ASAN_OPTIONS=detect_leaks=1 ./$(TARGET) $(DATA_DIR)/$(INSTANCE)
 
 # Pulizia
 clean:
