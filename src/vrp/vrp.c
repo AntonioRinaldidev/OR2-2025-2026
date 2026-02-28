@@ -117,7 +117,7 @@ int VRPopt(instance *inst)
 
 	// random seed and parallel mode
 	if (inst->randomseed != 0)
-		CPXsetintparam(env, CPX_PARAM_RANDOMSEED, fabs(inst->randomseed));
+		CPXsetintparam(env, CPX_PARAM_RANDOMSEED, abs(inst->randomseed));
 	if (1 || ((inst->randomseed < 0) && (inst->num_threads > 1))) // **always** opportunistics mode
 	{
 		if (VERBOSE >= 2)
