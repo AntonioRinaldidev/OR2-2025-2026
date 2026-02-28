@@ -1,9 +1,231 @@
 #include "vrp.h"
 
-void parse_instance(instance *inst)
+/**
+ * Prints an error message in red to stdout and terminates the program.
+ * @param err The error message string.
+ */
+void print_error(const char *err)
 {
+    printf("\n\n \033[1;31mERROR: %s \033[0m\n\n", err);
+    fflush(NULL);
+    exit(1);
 }
 
+/**
+ * Parses the input file (TSPLIB format) to populate the instance structure.
+ * Reads metadata (DIMENSION, CAPACITY) and data sections (COORDS, DEMAND, DEPOT).
+ * @param inst Pointer to the instance structure.
+ */
+void parse_instance(instance *inst)
+{
+    if (inst->input_file == NULL || strcmp(inst->input_file, "NULL") == 0)
+    {
+        print_error("No input file specified. Use -file <filename> to specify the input file.");
+    }
+    FILE *file = fopen(inst->input_file, "r");
+    if (file == NULL)
+        print_error(" input file not found!");
+
+    inst->nnodes = -1;
+    inst->depot = -1;
+    inst->nveh = -1;
+
+    char line[200];
+    char *par_name;
+    char *token1;
+    char *token2;
+
+    int active_section = 0;
+    // =1 NODE_COORD_SECTION, =2 DEMAND_SECTION, =3 DEPOT_SECTION
+    int do_print = (VERBOSE >= 4);
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        if (VERBOSE >= 5)
+        {
+            printf("%s", line);
+            fflush(NULL); // makes sure the output is printed immediately
+        }
+        if (strlen(line) <= 1)
+            continue; // skip empty lines
+
+        par_name = strtok(line, " :");
+        if (!par_name)
+            continue;
+
+        if (VERBOSE >= 6)
+        {
+            printf("parameter \"%s\" ", par_name);
+            fflush(NULL);
+        }
+
+        if (strncmp(par_name, "NAME", 4) == 0)
+        {
+            active_section = 0;
+            continue;
+        }
+        if (strncmp(par_name, "COMMENT", 7) == 0)
+        {
+            active_section = 0;
+            token1 = strtok(NULL, "");
+            if (VERBOSE >= 2)
+                printf(" ... solving instance %s with model %d\n\n", token1, inst->model_type);
+            continue;
+        }
+        if (strncmp(par_name, "TYPE", 4) == 0)
+        {
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: TYPE field is missing value");
+            if (strncmp(token1, "CVRP", 4) != 0)
+                print_error(" format error:  only TYPE == CVRP implemented so far!!!!!!");
+            active_section = 0;
+            continue;
+        }
+        if (strncmp(par_name, "DIMENSION", 9) == 0)
+        {
+            if (inst->nnodes >= 0)
+                print_error(" repeated DIMENSION section in input file");
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: DIMENSION field is missing value");
+            inst->nnodes = atoi(token1);
+            if (do_print)
+                printf(" ... n. nodes %d\n", inst->nnodes);
+
+            inst->demand = (double *)calloc(inst->nnodes, sizeof(double));
+            inst->xcoord = (double *)calloc(inst->nnodes, sizeof(double));
+            inst->ycoord = (double *)calloc(inst->nnodes, sizeof(double));
+            if (inst->demand == NULL || inst->xcoord == NULL || inst->ycoord == NULL)
+                print_error(" memory allocation error for node data");
+            active_section = 0;
+            continue;
+        }
+        if (strncmp(par_name, "CAPACITY", 8) == 0)
+        {
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: CAPACITY field is missing value");
+            inst->capacity = atof(token1);
+            if (do_print)
+                printf(" ... vehicle capacity %lf\n", inst->capacity);
+            active_section = 0;
+            continue;
+        }
+
+        if (strncmp(par_name, "VEHICLES", 8) == 0)
+        {
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: VEHICLES field is missing value");
+            inst->nveh = atoi(token1);
+            if (do_print)
+                printf(" ... n. vehicles %d\n", inst->nveh);
+            active_section = 0;
+            continue;
+        }
+
+        if (strncmp(par_name, "EDGE_WEIGHT_TYPE", 16) == 0)
+        {
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: EDGE_WEIGHT_TYPE field is missing value");
+            if (strncmp(token1, "EUC_2D", 6) != 0)
+                print_error(" format error:  only EDGE_WEIGHT_TYPE == EUC_2D implemented so far!!!!!!");
+            active_section = 0;
+            continue;
+        }
+
+        if (strncmp(par_name, "NODE_COORD_SECTION", 18) == 0)
+        {
+            if (inst->nnodes <= 0)
+                print_error(" ... DIMENSION section should appear before NODE_COORD_SECTION section");
+            active_section = 1;
+            continue;
+        }
+
+        if (strncmp(par_name, "DEMAND_SECTION", 14) == 0)
+        {
+            if (inst->nnodes <= 0)
+                print_error(" ... DIMENSION section should appear before DEMAND_SECTION section");
+            active_section = 2;
+            continue;
+        }
+
+        if (strncmp(par_name, "DEPOT_SECTION", 13) == 0)
+        {
+            if (inst->depot >= 0)
+                print_error(" ... DEPOT_SECTION repeated??");
+            active_section = 3;
+            continue;
+        }
+
+        if (strncmp(par_name, "EOF", 3) == 0)
+        {
+            active_section = 0;
+            break;
+        }
+
+        if (active_section == 1) // NODE_COORD_SECTION
+        {
+            int i = atoi(par_name) - 1;
+            if (i < 0 || i >= inst->nnodes)
+                print_error(" ... node index out of bounds in NODE_COORD_SECTION");
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: x coordinate missing in NODE_COORD_SECTION");
+            inst->xcoord[i] = atof(token1);
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: y coordinate missing in NODE_COORD_SECTION");
+            inst->ycoord[i] = atof(token1);
+            if (do_print)
+                printf(" ... node %4d at coordinates ( %15.7lf , %15.7lf )\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
+            continue;
+        }
+        else if (active_section == 2) // DEMAND_SECTION
+        {
+            int i = atoi(par_name) - 1;
+            if (i < 0 || i >= inst->nnodes)
+                print_error(" ... node index out of bounds in DEMAND_SECTION");
+            token1 = strtok(NULL, " :");
+            if (token1 == NULL)
+                print_error(" format error: demand missing in DEMAND_SECTION");
+            inst->demand[i] = atof(token1);
+            if (do_print)
+                printf(" ... node %4d has demand %10.5lf\n", i + 1, inst->demand[i]);
+            continue;
+        }
+        else if (active_section == 3) // DEPOT_SECTION
+        {
+            int id = atoi(par_name);
+            if (id == -1)
+            {
+                active_section = 0;
+                continue;
+            }
+            int i = id - 1;
+            if (i < 0 || i >= inst->nnodes)
+                print_error(" ... node index out of bounds in DEPOT_SECTION");
+            if (inst->depot >= 0)
+                print_error(" ... multiple depots defined in DEPOT_SECTION");
+            inst->depot = i;
+            if (do_print)
+                printf(" ... node %4d is a depot\n", i + 1);
+            continue;
+        }
+
+        print_error(" ... wrong format for the current simplified parser!!!!!!!!!");
+    }
+
+    fclose(file);
+}
+
+/**
+ * Parses command-line arguments to configure solver settings (file, time limit, threads, etc.).
+ * Displays the help menu if arguments are missing or help is requested.
+ * @param inst Pointer to the instance structure.
+ */
 void parse_command_line(int argc, char **argv, instance *inst)
 {
     if (VERBOSE >= 4)
@@ -38,12 +260,16 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // model type
         if (strcmp(argv[i], "-model_type") == 0 || strcmp(argv[i], "-model") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -model_type");
             inst->model_type = atoi(argv[++i]);
             continue;
         }
         // old benders
         if (strcmp(argv[i], "-old_benders") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -old_benders");
             inst->old_benders = atoi(argv[++i]);
             continue;
         }
@@ -51,6 +277,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // input file
         if (strcmp(argv[i], "-file") == 0 || strcmp(argv[i], "-input") == 0 || strcmp(argv[i], "-f") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing filename after -file option");
             strcpy(inst->input_file, argv[++i]);
             continue;
         }
@@ -58,6 +286,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // Number of threads
         if (strcmp(argv[i], "-threads") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -threads");
             inst->num_threads = atoi(argv[++i]);
             continue;
         }
@@ -65,6 +295,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // Available memory
         if (strcmp(argv[i], "-memory") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -memory");
             inst->available_memory = atoi(argv[++i]);
             continue;
         }
@@ -72,6 +304,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // Max number of nodes
         if (strcmp(argv[i], "-max_nodes") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -max_nodes");
             inst->max_nodes = atoi(argv[++i]);
             continue;
         }
@@ -79,6 +313,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // Random seed
         if (strcmp(argv[i], "-seed") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -seed");
             inst->randomseed = abs(atoi(argv[++i]));
             continue;
         }
@@ -86,6 +322,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // total time limit
         if (strcmp(argv[i], "-time_limit") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -time_limit");
             inst->timelimit = atof(argv[++i]);
             continue;
         }
@@ -93,6 +331,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         // cutoff
         if (strcmp(argv[i], "-cutoff") == 0)
         {
+            if (i + 1 >= argc)
+                print_error(" missing value for -cutoff");
             inst->cutoff = atof(argv[++i]);
             continue;
         }
