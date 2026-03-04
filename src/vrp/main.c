@@ -23,7 +23,7 @@ void free_instance(instance *inst)
 int main(int argc, char **argv)
 {
 
-    if (VERBOSE >= 2)
+    if (VERBOSE >= 4) // Level 4 for raw argument printing
     {
         for (int a = 0; a < argc; a++)
             printf("%s ", argv[a]);

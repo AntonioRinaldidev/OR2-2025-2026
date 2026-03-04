@@ -1,19 +1,30 @@
 #include "vrp.h"
 
+// ANSI Color Codes
+#define COLOR_RED "\033[1;31m"
+#define COLOR_GREEN "\033[1;32m"
+#define COLOR_YELLOW "\033[1;33m"
+#define COLOR_BLUE "\033[1;34m"
+
+#define COLOR_ORANGE "\033[38;5;208m"
+#define COLOR_MAGENTA "\033[1;35m"
+#define COLOR_CYAN "\033[1;36m"
+#define COLOR_RESET "\033[0m"
+
 /**
  * Prints an error message in red to stdout and terminates the program.
  * @param err The error message string.
  */
 void print_error(const char *err)
 {
-    printf("\n\n \033[1;31mERROR: %s \033[0m\n\n", err);
+    printf("\n\n" COLOR_RED " ERROR: %s \033[0m" COLOR_RESET "\n\n",
+           err);
     fflush(NULL);
     exit(1);
 }
 
 /**
  * Parses the input file (TSPLIB format) to populate the instance structure.
- * Reads metadata (DIMENSION, CAPACITY) and data sections (COORDS, DEMAND, DEPOT).
  * @param inst Pointer to the instance structure.
  */
 void parse_instance(instance *inst)
@@ -35,8 +46,8 @@ void parse_instance(instance *inst)
     char *token1;
 
     int active_section = 0;
-    // =1 NODE_COORD_SECTION, =2 DEMAND_SECTION, =3 DEPOT_SECTION
-    int do_print = (VERBOSE >= 4);
+    // =1 NODE_COORD_SECTION
+    int do_print = (VERBOSE >= 4); // Level 4 for detailed parsing info
 
     while (fgets(line, sizeof(line), file) != NULL)
     {
@@ -44,7 +55,7 @@ void parse_instance(instance *inst)
         {
             if (active_section == 0)
             {
-                printf("%s", line);
+                printf(COLOR_MAGENTA "[RAW] %s" COLOR_RESET, line);
                 fflush(NULL); // makes sure the output is printed immediately
             }
         }
@@ -64,8 +75,8 @@ void parse_instance(instance *inst)
         {
             active_section = 0;
             token1 = strtok(NULL, "");
-            if (VERBOSE >= 2)
-                printf("Solving instance %s with model %d\n\n", token1, inst->model_type);
+            if (VERBOSE >= 2) // Level 2 for basic info
+                printf("Solving instance " COLOR_GREEN "%s" COLOR_RESET "\n", token1 ? token1 : " (no description)");
             continue;
         }
         if (strncmp(par_name, "TYPE", 4) == 0)
@@ -86,13 +97,13 @@ void parse_instance(instance *inst)
                 print_error("Format error: DIMENSION field is missing value");
             inst->nnodes = atoi(token1);
             if (do_print)
-                printf("number of  nodes %d\n", inst->nnodes);
+                printf("Number of nodes: " COLOR_BLUE "%d" COLOR_RESET "\n", inst->nnodes);
 
             inst->demand = (double *)calloc(inst->nnodes, sizeof(double));
             inst->xcoord = (double *)calloc(inst->nnodes, sizeof(double));
             inst->ycoord = (double *)calloc(inst->nnodes, sizeof(double));
             if (inst->demand == NULL || inst->xcoord == NULL || inst->ycoord == NULL)
-                print_error(" memory allocation error for node data");
+                print_error("Memory allocation error for node data");
             active_section = 0;
             continue;
         }
@@ -101,7 +112,7 @@ void parse_instance(instance *inst)
         {
             token1 = strtok(NULL, " :\t\r\n");
             if (token1 == NULL)
-                print_error(" format error: EDGE_WEIGHT_TYPE field is missing value");
+                print_error("Format error: EDGE_WEIGHT_TYPE field is missing value");
 
             active_section = 0;
             continue;
@@ -110,8 +121,10 @@ void parse_instance(instance *inst)
         if (strncmp(par_name, "NODE_COORD_SECTION", 18) == 0)
         {
             if (inst->nnodes <= 0)
-                print_error("  DIMENSION section should appear before NODE_COORD_SECTION section");
+                print_error("DIMENSION section should appear before NODE_COORD_SECTION section");
             active_section = 1;
+            if (do_print)
+                printf(COLOR_MAGENTA "Reading Node Coordinates...\n" COLOR_RESET);
             continue;
         }
 
@@ -125,20 +138,23 @@ void parse_instance(instance *inst)
         {
             int i = atoi(par_name) - 1;
             if (i < 0 || i >= inst->nnodes)
-                print_error("  node index out of bounds in NODE_COORD_SECTION");
+                print_error("Node index out of bounds in NODE_COORD_SECTION");
             token1 = strtok(NULL, " :\t\r\n");
             if (token1 == NULL)
-                print_error(" format error: x coordinate missing in NODE_COORD_SECTION");
+                print_error("Format error: x coordinate missing in NODE_COORD_SECTION");
             inst->xcoord[i] = atof(token1);
             token1 = strtok(NULL, " :\t\r\n");
             if (token1 == NULL)
-                print_error(" format error: y coordinate missing in NODE_COORD_SECTION");
+                print_error("Format error: y coordinate missing in NODE_COORD_SECTION");
             inst->ycoord[i] = atof(token1);
             if (do_print)
-                printf("node [%4d] at coordinates ( %15.7lf , %15.7lf )\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
+                printf("Node " COLOR_YELLOW "[%4d] " COLOR_RESET "at coordinates ( " COLOR_CYAN "%15.7lf " COLOR_RESET ", " COLOR_CYAN "%15.7lf " COLOR_RESET ")\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
             continue;
         }
     }
+
+    if (VERBOSE >= 1) // Level 1 for success messages
+        printf("Instance " COLOR_GREEN "%s" COLOR_RESET " parsed successfully.\n", inst->input_file);
 
     fclose(file);
 }
@@ -150,7 +166,7 @@ void parse_instance(instance *inst)
  */
 void parse_command_line(int argc, char **argv, instance *inst)
 {
-    if (VERBOSE >= 4)
+    if (VERBOSE >= 4) // Level 4 for debugging arguments
     {
         printf(" running %s with %d parameters \n", argv[0], argc - 1);
     }
@@ -273,6 +289,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     }
     if (help)
     {
+        printf(COLOR_ORANGE);
         printf("----------------------------------------------------------------------\n");
         printf(" TSP/VRP SOLVER - Help Menu\n");
         printf("----------------------------------------------------------------------\n");
@@ -294,28 +311,33 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -cutoff <val>       Ignore solutions with a cost higher than this value\n");
         printf("  -int                Force the model to treat all edge costs as integers\n");
         printf("----------------------------------------------------------------------\n");
+        printf(COLOR_RESET);
         exit(1);
     }
 
-    printf("----------------------------------------------------------------------\n");
-    printf(" TSP/VRP SOLVER - Current Configuration\n");
-    printf("----------------------------------------------------------------------\n");
-    printf("Usage: %s -file <filename> [options]\n\n", argv[0]);
+    if (VERBOSE >= 2) // Level 2 for configuration summary
+    {
+        printf("\n\n" COLOR_MAGENTA "Configuration Summary:" COLOR_RESET "\n");
+        printf("----------------------------------------------------------------------\n");
+        printf(" TSP/VRP SOLVER - Current Configuration\n");
+        printf("----------------------------------------------------------------------\n");
 
-    printf("GENERAL LOGIC & FILES:\n");
-    printf("  -file <path>        : %s\n", inst->input_file);
-    printf("  -model_type <n>     : %d (To be Defined)\n", inst->model_type);
-    printf("  -old_benders <0|1>  : %d (0=new, 1=old)\n", inst->old_benders);
+        printf(COLOR_MAGENTA "GENERAL LOGIC & FILES:\n" COLOR_RESET);
+        printf("  -file <path>        : %s\n", inst->input_file);
+        printf("  -model_type <n>     : %d \n", inst->model_type);
+        printf("  -old_benders <0|1>  : %d \n", inst->old_benders);
 
-    printf("\nPERFORMANCE & RESOURCES:\n");
-    printf("  -threads <n>        : %d (0=auto)\n", inst->num_threads);
-    printf("  -memory <MB>        : %d MB\n", inst->available_memory);
-    printf("  -max_nodes <n>      : %d (-1=unlimited)\n", inst->max_nodes);
+        printf(COLOR_MAGENTA "\nPERFORMANCE & RESOURCES:\n" COLOR_RESET);
+        printf("  -threads <n>        : %d (0=auto)\n", inst->num_threads);
+        printf("  -memory <MB>        : %d MB\n", inst->available_memory);
+        printf("  -max_nodes <n>      : %d (-1=unlimited)\n", inst->max_nodes);
 
-    printf("\nOPTIMIZATION CONSTRAINTS:\n");
-    printf("  -seed <n>           : %d\n", inst->randomseed);
-    printf("  -time_limit <s>     : %.2f sec\n", inst->timelimit);
-    printf("  -cutoff <val>       : %.2f\n", inst->cutoff);
-    printf("  -int                : %s\n", inst->integer_costs ? "Enabled" : "Disabled");
-    printf("----------------------------------------------------------------------\n");
+        printf(COLOR_MAGENTA "\nOPTIMIZATION CONSTRAINTS:\n" COLOR_RESET);
+        printf("  -seed <n>           : %d\n", inst->randomseed);
+        printf("  -time_limit <s>     : %.2f sec\n", inst->timelimit);
+        printf("  -cutoff <val>       : %.2f\n", inst->cutoff);
+        printf("  -int                : %s\n", inst->integer_costs ? "Enabled" : "Disabled");
+        printf("----------------------------------------------------------------------\n");
+        printf(COLOR_RESET);
+    }
 }

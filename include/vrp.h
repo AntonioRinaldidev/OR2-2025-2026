@@ -11,7 +11,7 @@
 #include <cplex.h>
 #include <pthread.h>
 
-#define VERBOSE 50 // printing level  (=10 only incumbent, =20 little output, =50-60 good, =70 verbose, >=100 cplex log)
+#define VERBOSE 4 // printing level  (=10 only incumbent, =20 little output, =50-60 good, =70 verbose, >=100 cplex log)
 
 // hard-wired parameters
 #define XSMALL 1e-5             // 1e-4*	// tolerance used to decide ingerality of 0-1 var.s
