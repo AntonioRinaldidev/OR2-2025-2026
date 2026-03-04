@@ -65,10 +65,18 @@ typedef struct
     int zstart;
 } instance;
 
+// --- CORE UTILITIES ---
+void print_error(const char *err);
+void parse_instance(instance *inst);
+void parse_command_line(int argc, char **argv, instance *inst);
+
 // --- TSP UTILITY FUNCTIONS ---
 void print_tour(int *tour, int num_nodes);
-int check_tour(int *tour, int num_nodes);
+int check_tour(int *tour, instance *inst);
 void plot_tour(instance *inst, int *tour);
+int parse_optimal_solution(instance *inst, int *tour);
+
+double dist(int i, int j, instance *inst);
 
 // inline
 inline int imax(int i1, int i2) { return (i1 > i2) ? i1 : i2; }

@@ -148,7 +148,7 @@ void parse_instance(instance *inst)
                 print_error("Format error: y coordinate missing in NODE_COORD_SECTION");
             inst->ycoord[i] = atof(token1);
             if (do_print)
-                printf("Node " COLOR_YELLOW "[%4d] " COLOR_RESET "at coordinates ( " COLOR_CYAN "%15.7lf " COLOR_RESET ", " COLOR_CYAN "%15.7lf " COLOR_RESET ")\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
+                printf("Node " COLOR_YELLOW "[%4d] " COLOR_RESET "at coordinates ( " COLOR_CYAN "%6.0lf " COLOR_RESET ", " COLOR_CYAN "%6.0lf " COLOR_RESET ")\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
             continue;
         }
     }
@@ -344,7 +344,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
 // Outputting with 1-based indexing
 void print_tour(int *tour, int num_nodes) {
-    printf("Tour sequence: ");
+    printf(COLOR_BLUE "Tour sequence: " COLOR_RESET);
     for (int i = 0; i < num_nodes; i++) {
         // Shift back to 1-based indexing for output
         printf("%d ", tour[i] + 1); 
@@ -353,14 +353,14 @@ void print_tour(int *tour, int num_nodes) {
 }
 
 // Check Tour Function
-int check_tour(int *tour, int num_nodes) {
+int check_tour(int *tour, instance *inst) {
+    int num_nodes = inst->nnodes;
     int *visited = (int *)calloc(num_nodes, sizeof(int));
     
     for (int i = 0; i < num_nodes; i++) {
         int node = tour[i];
-        
         if (node < 0 || node >= num_nodes) {
-            printf("Error: Node %d is out of bounds!\n", node);
+            printf(COLOR_RED "Error: Node %d is out of bounds!\n" COLOR_RESET, node);
             free(visited);
             return 0; // Invalid
         }
@@ -369,13 +369,24 @@ int check_tour(int *tour, int num_nodes) {
     
     for (int i = 0; i < num_nodes; i++) {
         if (visited[i] != 1) {
-            printf("Error: Node %d was visited %d times (must be exactly 1)!\n", i, visited[i]);
+            printf(COLOR_RED "Error: Node %d was visited %d times (must be exactly 1)!\n" COLOR_RESET, i, visited[i]);
             free(visited);
             return 0; // Invalid
         }
     }
     
-    if (VERBOSE >= 10) printf("... Tour check passed: Valid cycle.\n");
+    // --- Calculate Total Cost ---
+    double total_cost = 0.0;
+    for (int i = 0; i < num_nodes - 1; i++) {
+        total_cost += dist(tour[i], tour[i+1], inst); // Distance from i to i+1
+    }
+    // Add the distance to close the loop (from the last node back to the first)
+    total_cost += dist(tour[num_nodes - 1], tour[0], inst);
+
+    if (VERBOSE >= 1) {
+        printf(COLOR_GREEN "\n... Tour check passed: Valid cycle.\n" COLOR_RESET);
+        printf(COLOR_CYAN "... TOTAL TOUR COST: %.2f\n" COLOR_RESET, total_cost);
+    }
     
     free(visited);
     return 1; // Valid cycle
@@ -386,7 +397,7 @@ void plot_tour(instance *inst, int *tour) {
     
     FILE *gnuplotPipe = popen("/usr/local/bin/gnuplot", "w");
     if (!gnuplotPipe) {
-        printf("Error: Could not open GNUplot.\n");
+        printf(COLOR_RED "Error: Could not open GNUplot.\n" COLOR_RESET);
         return;
     }
 
@@ -413,4 +424,53 @@ void plot_tour(instance *inst, int *tour) {
 
     fflush(gnuplotPipe);
     pclose(gnuplotPipe);
+}
+
+// Parser for the .opt.tour files
+int parse_optimal_solution(instance *inst, int *tour) {
+    // 1. Dynamically generate the optimal filename from the instance input file
+    char opt_filename[1000];
+    strcpy(opt_filename, inst->input_file);
+    char *ext = strrchr(opt_filename, '.');
+    if (ext != NULL) {
+        strcpy(ext, ".opt.tour");
+    } else {
+        strcat(opt_filename, ".opt.tour"); // Fallback just in case
+    }
+
+    // 2. Safely check if the file exists
+    FILE *file = fopen(opt_filename, "r");
+    if (!file) {
+        if (VERBOSE >= 1)
+            printf(COLOR_YELLOW "\n--- Notice: No optimal tour file found at %s ---\n" COLOR_RESET, opt_filename);
+        return 0; // Return 0 (False) to tell main.c to skip the checks
+    }
+    
+    if (VERBOSE >= 1)
+        printf("\n" COLOR_MAGENTA "Loading optimal tour... " COLOR_RESET "\n");
+
+    // 3. Parse the file
+    char line[256];
+    int active_section = 0;
+    int idx = 0;
+    
+    while (fgets(line, sizeof(line), file) != NULL) {
+        if (strncmp(line, "TOUR_SECTION", 12) == 0) {
+            active_section = 1;
+            continue;
+        }
+        if (active_section) {
+            int node = atoi(line);
+            if (node == -1) break; 
+            
+            if (idx >= inst->nnodes) {
+                print_error("Optimal tour file contains more nodes than the instance dimension!");
+            }
+            
+            tour[idx++] = node - 1; 
+        }
+    }
+    fclose(file);
+
+    return 1; // Return 1 (True) to indicate success
 }

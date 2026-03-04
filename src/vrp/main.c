@@ -1,8 +1,15 @@
 #include "vrp.h"
 
-void print_error(const char *err);
-void parse_instance(instance *inst);
-void parse_command_line(int argc, char **argv, instance *inst);
+// ANSI Color Codes
+#define COLOR_RED "\033[1;31m"
+#define COLOR_GREEN "\033[1;32m"
+#define COLOR_YELLOW "\033[1;33m"
+#define COLOR_BLUE "\033[1;34m"
+
+#define COLOR_ORANGE "\033[38;5;208m"
+#define COLOR_MAGENTA "\033[1;35m"
+#define COLOR_CYAN "\033[1;36m"
+#define COLOR_RESET "\033[0m"
 
 void debug(const char *err)
 {
@@ -22,7 +29,7 @@ void free_instance(instance *inst)
 int main(int argc, char **argv)
 {
 
-    if (VERBOSE >= 4) // Level 4 for raw argument printing
+    if (VERBOSE >= 2)
     {
         for (int a = 0; a < argc; a++)
             printf("%s ", argv[a]);
@@ -35,31 +42,26 @@ int main(int argc, char **argv)
     parse_command_line(argc, argv, &inst);
     parse_instance(&inst);
 
-    // --- TEST FOR UTILITIES ---
+    // --- TEST ---
     if (inst.nnodes > 0) {
-        printf("\n--- Testing TSP Utilities ---\n");
+        int *optimal_tour = (int *)malloc(inst.nnodes * sizeof(int));
         
-        // Create a dummy tour (0, 1, 2, ..., nnodes-1)
-        int *dummy_tour = (int *)malloc(inst.nnodes * sizeof(int));
-        for (int i = 0; i < inst.nnodes; i++) {
-            dummy_tour[i] = i; 
+        // The parser handles the filename generation AND checks if it exists
+        if (parse_optimal_solution(&inst, optimal_tour)) {
+            
+            print_tour(optimal_tour, inst.nnodes);
+
+            // Check it and calculate the total weight
+            if (check_tour(optimal_tour, &inst)) {
+                // ONLY plot if the tour is mathematically valid
+                printf(COLOR_BLUE "\n> Plotting the optimal tour... Check 'tour_plot.png'!\n" COLOR_RESET);
+                plot_tour(&inst, optimal_tour);
+            } else {
+                printf(COLOR_RED "> Aborting plot: The sequence is INVALID!\n" COLOR_RESET);
+            }
         }
-
-        // 1. Print the tour
-        print_tour(dummy_tour, inst.nnodes);
-
-        // 2. Check if it's a valid cycle
-        if (check_tour(dummy_tour, inst.nnodes)) {
-            printf("\n> The generated sequence is a VALID tour!\n");
-        } else {
-            printf("\n> The generated sequence is INVALID!\n");
-        }
-
-        // 3. Plot the tour using GNUplot
-        printf("> Plotting the tour... Check your project folder for 'tour_plot.png'!\n");
-        plot_tour(&inst, dummy_tour);
-
-        free(dummy_tour);
+        
+        free(optimal_tour);
     }
     // --------------------------------
 
