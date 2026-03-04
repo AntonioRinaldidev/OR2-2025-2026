@@ -341,3 +341,76 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf(COLOR_RESET);
     }
 }
+
+// Outputting with 1-based indexing
+void print_tour(int *tour, int num_nodes) {
+    printf("Tour sequence: ");
+    for (int i = 0; i < num_nodes; i++) {
+        // Shift back to 1-based indexing for output
+        printf("%d ", tour[i] + 1); 
+    }
+    printf("\n");
+}
+
+// Check Tour Function
+int check_tour(int *tour, int num_nodes) {
+    int *visited = (int *)calloc(num_nodes, sizeof(int));
+    
+    for (int i = 0; i < num_nodes; i++) {
+        int node = tour[i];
+        
+        if (node < 0 || node >= num_nodes) {
+            printf("Error: Node %d is out of bounds!\n", node);
+            free(visited);
+            return 0; // Invalid
+        }
+        visited[node]++;
+    }
+    
+    for (int i = 0; i < num_nodes; i++) {
+        if (visited[i] != 1) {
+            printf("Error: Node %d was visited %d times (must be exactly 1)!\n", i, visited[i]);
+            free(visited);
+            return 0; // Invalid
+        }
+    }
+    
+    if (VERBOSE >= 10) printf("... Tour check passed: Valid cycle.\n");
+    
+    free(visited);
+    return 1; // Valid cycle
+}
+
+// Plotting with GNUplot
+void plot_tour(instance *inst, int *tour) {
+    
+    FILE *gnuplotPipe = popen("/usr/local/bin/gnuplot", "w");
+    if (!gnuplotPipe) {
+        printf("Error: Could not open GNUplot.\n");
+        return;
+    }
+
+    // Output a PNG file 
+    fprintf(gnuplotPipe, "set terminal pngcairo size 800,600\n");
+    fprintf(gnuplotPipe, "set output 'tour_plot.png'\n");
+    
+    fprintf(gnuplotPipe, "set title 'TSP Tour'\n");
+    fprintf(gnuplotPipe, "set key off\n"); 
+    fprintf(gnuplotPipe, "plot '-' with linespoints pt 7 lc rgb 'blue'\n");
+
+    // Loop through the tour array to feed the coordinates in order
+    for (int i = 0; i < inst->nnodes; i++) {
+        int node = tour[i];
+        fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[node], inst->ycoord[node]);
+    }
+    
+    // Print the starting node again to close the plotted cycle
+    int start_node = tour[0];
+    fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[start_node], inst->ycoord[start_node]);
+
+    // Signal end of data to GNUplot
+    fprintf(gnuplotPipe, "e\n");
+
+    fflush(gnuplotPipe);
+    pclose(gnuplotPipe);
+}
