@@ -76,8 +76,7 @@ void parse_instance(instance *inst)
             token1 = strtok(NULL, " :");
             if (token1 == NULL)
                 print_error(" format error: TYPE field is missing value");
-            if (strncmp(token1, "CVRP", 4) != 0)
-                print_error(" format error:  only TYPE == CVRP implemented so far!!!!!!");
+
             active_section = 0;
             continue;
         }
@@ -129,8 +128,7 @@ void parse_instance(instance *inst)
             token1 = strtok(NULL, " :");
             if (token1 == NULL)
                 print_error(" format error: EDGE_WEIGHT_TYPE field is missing value");
-            if (strncmp(token1, "EUC_2D", 6) != 0)
-                print_error(" format error:  only EDGE_WEIGHT_TYPE == EUC_2D implemented so far!!!!!!");
+
             active_section = 0;
             continue;
         }
@@ -213,8 +211,6 @@ void parse_instance(instance *inst)
                 printf(" ... node %4d is a depot\n", i + 1);
             continue;
         }
-
-        print_error(" ... wrong format for the current simplified parser!!!!!!!!!");
     }
 
     fclose(file);
