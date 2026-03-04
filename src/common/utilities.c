@@ -18,7 +18,7 @@ void print_error(const char *err)
  */
 void parse_instance(instance *inst)
 {
-    if (inst->input_file == NULL || strcmp(inst->input_file, "NULL") == 0)
+    if (strcmp(inst->input_file, "NULL") == 0)
     {
         print_error("No input file specified. Use -file <filename> to specify the input file.");
     }
@@ -33,7 +33,6 @@ void parse_instance(instance *inst)
     char line[200];
     char *par_name;
     char *token1;
-    char *token2;
 
     int active_section = 0;
     // =1 NODE_COORD_SECTION, =2 DEMAND_SECTION, =3 DEPOT_SECTION
