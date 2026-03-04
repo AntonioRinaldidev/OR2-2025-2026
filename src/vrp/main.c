@@ -11,12 +11,22 @@
 #define COLOR_CYAN "\033[1;36m"
 #define COLOR_RESET "\033[0m"
 
+/**
+ * Prints a debug message to stdout.
+ * Useful for tracking execution flow or identifying issues during development.
+ * @param err The debug message string to print.
+ */
 void debug(const char *err)
 {
     printf("\nDEBUG: %s \n", err);
     fflush(NULL);
 }
 
+/**
+ * Frees all dynamically allocated memory within the instance structure.
+ * Prevents memory leaks by safely deallocating arrays for coordinates, demands, and loads.
+ * @param inst Pointer to the instance structure to be cleaned up.
+ */
 void free_instance(instance *inst)
 {
     if (inst->demand) free(inst->demand);
@@ -26,6 +36,14 @@ void free_instance(instance *inst)
     if (inst->load_max) free(inst->load_max);
 }
 
+/**
+ * Main entry point for the TSP/VRP solver.
+ * Initializes the problem instance, parses command-line arguments, reads the input map,
+ * and attempts to load, validate, and plot an optimal solution if one is available.
+ * @param argc The number of command-line arguments.
+ * @param argv Array of command-line argument strings.
+ * @return 0 upon successful program termination.
+ */
 int main(int argc, char **argv)
 {
 
@@ -47,7 +65,7 @@ int main(int argc, char **argv)
         int *optimal_tour = (int *)malloc(inst.nnodes * sizeof(int));
         
         // The parser handles the filename generation AND checks if it exists
-        if (parse_optimal_solution(&inst, optimal_tour)) {
+        if (parse_tour(&inst, optimal_tour)) {
             
             print_tour(optimal_tour, inst.nnodes);
 

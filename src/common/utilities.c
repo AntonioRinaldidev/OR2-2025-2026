@@ -342,7 +342,12 @@ void parse_command_line(int argc, char **argv, instance *inst)
     }
 }
 
-// Outputting with 1-based indexing
+/**
+ * Prints the sequence of a given tour to stdout.
+ * Outputs the node indices adjusted to a 1-based format for readability.
+ * @param tour Array representing the order of visited nodes (0-based internally).
+ * @param num_nodes The total number of nodes in the tour.
+ */
 void print_tour(int *tour, int num_nodes) {
     printf(COLOR_BLUE "Tour sequence: " COLOR_RESET);
     for (int i = 0; i < num_nodes; i++) {
@@ -352,7 +357,13 @@ void print_tour(int *tour, int num_nodes) {
     printf("\n");
 }
 
-// Check Tour Function
+/**
+ * Validates the structural integrity of a given tour array and calculates its total cost.
+ * Checks that the array contains a mathematically valid cycle with no duplicates or out-of-bound nodes.
+ * @param tour Array representing the sequence of visited nodes.
+ * @param inst Pointer to the instance structure containing node coordinates.
+ * @return 1 if the sequence forms a valid continuous cycle, 0 if invalid.
+ */
 int check_tour(int *tour, instance *inst) {
     int num_nodes = inst->nnodes;
     int *visited = (int *)calloc(num_nodes, sizeof(int));
@@ -392,10 +403,15 @@ int check_tour(int *tour, instance *inst) {
     return 1; // Valid cycle
 }
 
-// Plotting with GNUplot
+/**
+ * Generates a visual plot of the TSP tour using GNUplot.
+ * It writes the node coordinates to a temporary GNUplot pipe and saves the graph as a PNG image.
+ * @param inst Pointer to the instance structure containing the coordinate map.
+ * @param tour Array representing the sequence of nodes to plot.
+ */
 void plot_tour(instance *inst, int *tour) {
     
-    FILE *gnuplotPipe = popen("/usr/local/bin/gnuplot", "w");
+    FILE *gnuplotPipe = popen("gnuplot", "w");
     if (!gnuplotPipe) {
         printf(COLOR_RED "Error: Could not open GNUplot.\n" COLOR_RESET);
         return;
@@ -426,9 +442,15 @@ void plot_tour(instance *inst, int *tour) {
     pclose(gnuplotPipe);
 }
 
-// Parser for the .opt.tour files
-int parse_optimal_solution(instance *inst, int *tour) {
-    // 1. Dynamically generate the optimal filename from the instance input file
+/**
+ * Parses a given `.opt.tour` solution file dynamically generated from the input file path.
+ * Loads the optimal sequence into the provided array for further evaluation and checking.
+ * @param inst Pointer to the instance structure containing the problem dimension and initial filename.
+ * @param tour Pre-allocated array to be filled with the valid 0-based node sequence.
+ * @return 1 on successful read and parse, 0 if the corresponding optimal tour file does not exist.
+ */
+int parse_tour(instance *inst, int *tour) {
+    // Dynamically generate the optimal filename from the instance input file
     char opt_filename[1000];
     strcpy(opt_filename, inst->input_file);
     char *ext = strrchr(opt_filename, '.');
@@ -438,7 +460,7 @@ int parse_optimal_solution(instance *inst, int *tour) {
         strcat(opt_filename, ".opt.tour"); // Fallback just in case
     }
 
-    // 2. Safely check if the file exists
+    // Safely check if the file exists
     FILE *file = fopen(opt_filename, "r");
     if (!file) {
         if (VERBOSE >= 1)
@@ -449,7 +471,7 @@ int parse_optimal_solution(instance *inst, int *tour) {
     if (VERBOSE >= 1)
         printf("\n" COLOR_MAGENTA "Loading optimal tour... " COLOR_RESET "\n");
 
-    // 3. Parse the file
+    // Parse the file
     char line[256];
     int active_section = 0;
     int idx = 0;

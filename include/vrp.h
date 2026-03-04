@@ -74,7 +74,7 @@ void parse_command_line(int argc, char **argv, instance *inst);
 void print_tour(int *tour, int num_nodes);
 int check_tour(int *tour, instance *inst);
 void plot_tour(instance *inst, int *tour);
-int parse_optimal_solution(instance *inst, int *tour);
+int parse_tour(instance *inst, int *tour);
 
 double dist(int i, int j, instance *inst);
 
