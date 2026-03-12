@@ -1,15 +1,7 @@
-#include "vrp.h"
 
-// ANSI Color Codes
-#define COLOR_RED "\033[1;31m"
-#define COLOR_GREEN "\033[1;32m"
-#define COLOR_YELLOW "\033[1;33m"
-#define COLOR_BLUE "\033[1;34m"
+#include "utilities.h"
 
-#define COLOR_ORANGE "\033[38;5;208m"
-#define COLOR_MAGENTA "\033[1;35m"
-#define COLOR_CYAN "\033[1;36m"
-#define COLOR_RESET "\033[0m"
+int VERBOSE = 2;
 
 /**
  * Prints an error message in red to stdout and terminates the program.
@@ -31,15 +23,13 @@ void parse_instance(instance *inst)
 {
     if (strcmp(inst->input_file, "NULL") == 0)
     {
-        print_error("No input file specified. Use -file <filename> to specify the input file.");
+        print_error("No input file specified. Use -file <filename> or -random <n>.");
     }
     FILE *file = fopen(inst->input_file, "r");
     if (file == NULL)
         print_error(" input file not found!");
 
     inst->nnodes = -1;
-    inst->depot = -1;
-    inst->nveh = -1;
 
     char line[200];
     char *par_name;
@@ -99,12 +89,8 @@ void parse_instance(instance *inst)
             if (do_print)
                 printf("Number of nodes: " COLOR_BLUE "%d" COLOR_RESET "\n", inst->nnodes);
 
-            inst->demand = (double *)calloc(inst->nnodes, sizeof(double));
-            inst->xcoord = (double *)calloc(inst->nnodes, sizeof(double));
             inst->ycoord = (double *)calloc(inst->nnodes, sizeof(double));
-            if (inst->demand == NULL || inst->xcoord == NULL || inst->ycoord == NULL)
-                print_error("Memory allocation error for node data");
-            active_section = 0;
+            inst->xcoord = (double *)calloc(inst->nnodes, sizeof(double));
             continue;
         }
 
@@ -160,6 +146,26 @@ void parse_instance(instance *inst)
 }
 
 /**
+ * Pre-computes the distance matrix for the instance.
+ * Stores the result in inst->dists.
+ * @param inst Pointer to the instance structure.
+ */
+void compute_distances(instance *inst)
+{
+    int n = inst->nnodes;
+    double *d = (double *)malloc(n * n * sizeof(double));
+
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            d[i * n + j] = dist_sq(i, j, inst);
+        }
+    }
+    inst->dists = d;
+}
+
+/**
  * Parses command-line arguments to configure solver settings (file, time limit, threads, etc.).
  * Displays the help menu if arguments are missing or help is requested.
  * @param inst Pointer to the instance structure.
@@ -171,21 +177,14 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf(" running %s with %d parameters \n", argv[0], argc - 1);
     }
 
-    // General Logic & Files
-    inst->model_type = 0;
-    inst->old_benders = 0; // Old or new Benders decomposition (0 = new, 1 = old)
     strcpy(inst->input_file, "NULL");
 
-    // Performance & Resources
-    inst->available_memory = 12000; // Limits available memory for CPLEX execution in MB (e.g., 12000)
-    inst->num_threads = 0;          // Controls parallel processing (0 means automatic detection of available cores)
-    inst->max_nodes = -1;           //-1 means unlimited, otherwise sets a cap on the number of branching nodes in the final run
+    inst->num_threads = 0; // Controls parallel processing (0 means automatic detection of available cores)
+    inst->nnodes = 0;      // Number of nodes for random generation
 
     // Optimization Constraints
-    inst->randomseed = 0;           // Seed for random number generation, useful for reproducibility
-    inst->timelimit = CPX_INFBOUND; // How long the solver is allowed to run before it is terminated
-    inst->cutoff = CPX_INFBOUND;    // Sets an upper bound on the objective function value, guiding the solver to focus on solutions better than this threshold
-    inst->integer_costs = 0;        // Indicates whether the costs in the model should be treated as integers (1) or not (0)
+    inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
+    inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
 
     int help = 0;
     if (argc < 1)
@@ -196,21 +195,6 @@ void parse_command_line(int argc, char **argv, instance *inst)
     for (int i = 1; i < argc; i++)
     {
         // model type
-        if (strcmp(argv[i], "-model_type") == 0 || strcmp(argv[i], "-model") == 0)
-        {
-            if (i + 1 >= argc)
-                print_error(" missing value for -model_type");
-            inst->model_type = atoi(argv[++i]);
-            continue;
-        }
-        // old benders
-        if (strcmp(argv[i], "-old_benders") == 0)
-        {
-            if (i + 1 >= argc)
-                print_error(" missing value for -old_benders");
-            inst->old_benders = atoi(argv[++i]);
-            continue;
-        }
 
         // input file
         if (strcmp(argv[i], "-file") == 0 || strcmp(argv[i], "-input") == 0 || strcmp(argv[i], "-f") == 0)
@@ -218,6 +202,15 @@ void parse_command_line(int argc, char **argv, instance *inst)
             if (i + 1 >= argc)
                 print_error(" missing filename after -file option");
             strcpy(inst->input_file, argv[++i]);
+            continue;
+        }
+
+        // node number for random generation
+        if (strcmp(argv[i], "-node_number") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value for -node_number");
+            inst->nnodes = atoi(argv[++i]);
             continue;
         }
 
@@ -230,35 +223,19 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
-        // Available memory
-        if (strcmp(argv[i], "-memory") == 0)
-        {
-            if (i + 1 >= argc)
-                print_error(" missing value for -memory");
-            inst->available_memory = atoi(argv[++i]);
-            continue;
-        }
-
-        // Max number of nodes
-        if (strcmp(argv[i], "-max_nodes") == 0)
-        {
-            if (i + 1 >= argc)
-                print_error(" missing value for -max_nodes");
-            inst->max_nodes = atoi(argv[++i]);
-            continue;
-        }
-
         // Random seed
         if (strcmp(argv[i], "-seed") == 0)
         {
             if (i + 1 >= argc)
                 print_error(" missing value for -seed");
+            if (atoi(argv[i + 1]) == -1)
+                print_error(" random seed must be a non-negative integer");
             inst->randomseed = abs(atoi(argv[++i]));
             continue;
         }
 
         // total time limit
-        if (strcmp(argv[i], "-time_limit") == 0)
+        if (strcmp(argv[i], "-time_limit") == 0 || strcmp(argv[i], "-time") == 0)
         {
             if (i + 1 >= argc)
                 print_error(" missing value for -time_limit");
@@ -266,27 +243,40 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
-        // cutoff
-        if (strcmp(argv[i], "-cutoff") == 0)
+        // Verbosity level
+        if (strcmp(argv[i], "-verbose") == 0 || strcmp(argv[i], "-v") == 0)
         {
             if (i + 1 >= argc)
-                print_error(" missing value for -cutoff");
-            inst->cutoff = atof(argv[++i]);
+                print_error(" missing value for -verbose");
+            VERBOSE = atoi(argv[++i]);
             continue;
         }
 
-        // integer costs
-        if (strcmp(argv[i], "-int") == 0)
-        {
-            inst->integer_costs = 1;
-            continue;
-        }
         if (strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "-h") == 0)
         {
             help = 1;
             continue;
         }
     }
+
+    // --- VALIDATE ARGUMENTS ---
+    int file_mode = (strcmp(inst->input_file, "NULL") != 0);
+    int seed_set = (inst->randomseed != -1);
+    int nodes_set = (inst->nnodes > 0);
+
+    if (file_mode && (seed_set || nodes_set))
+    {
+        print_error("Cannot use file mode (-file) with random generation flags (-seed, -node_number).");
+    }
+    if (!file_mode && (seed_set != nodes_set))
+    {
+        print_error("-seed and -node_number must be used together.");
+    }
+    if (!file_mode && !seed_set && !help)
+    {
+        print_error("You must specify an input mode: either -file <path> or (-seed <n> and -node_number <n>).");
+    }
+
     if (help)
     {
         printf(COLOR_ORANGE);
@@ -296,20 +286,17 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("Usage: %s -file <filename> [options]\n\n", argv[0]);
 
         printf("GENERAL LOGIC & FILES:\n");
-        printf("  -file <path>        Path to the .tsp or .vrp input file (Required)\n");
-        printf("  -model_type <n>     Select model: 0,1,2, (To be Defined) \n");
-        printf("  -old_benders <0|1>  Switch between new (0) or old (1) Benders decomposition\n");
+        printf("  -file <path>        Path to the .tsp or .vrp input file.\n");
+        printf("  -seed <n>           Enable random generation with a specific seed.\n");
+        printf("  -node_number <n>    Number of nodes for the random instance (requires -seed).\n");
 
         printf("\nPERFORMANCE & RESOURCES:\n");
-        printf("  -threads <n>        Number of CPU threads (0 for automatic detection)\n");
-        printf("  -memory <MB>        Maximum RAM allowed for CPLEX (e.g., 12000 for 12GB)\n");
-        printf("  -max_nodes <n>      Limit branching nodes in the search tree (-1 for unlimited)\n");
+        printf("  -threads <n>        Number of CPU threads (0=auto).\n");
+        printf("  -verbose <n>        Set verbosity level (0=silent, 1=info, 2=default, 3=detail, 4=debug, 5=trace).\n");
 
         printf("\nOPTIMIZATION CONSTRAINTS:\n");
         printf("  -seed <n>           Set the random seed for reproducible results\n");
         printf("  -time_limit <s>     Maximum execution time in seconds before termination\n");
-        printf("  -cutoff <val>       Ignore solutions with a cost higher than this value\n");
-        printf("  -int                Force the model to treat all edge costs as integers\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
         exit(1);
@@ -323,20 +310,22 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("----------------------------------------------------------------------\n");
 
         printf(COLOR_MAGENTA "GENERAL LOGIC & FILES:\n" COLOR_RESET);
-        printf("  -file <path>        : %s\n", inst->input_file);
-        printf("  -model_type <n>     : %d \n", inst->model_type);
-        printf("  -old_benders <0|1>  : %d \n", inst->old_benders);
+        if (file_mode)
+            printf("  -file <path>        : %s\n", inst->input_file);
+        else
+            printf("  -node_number <n>    : %d\n", inst->nnodes);
 
         printf(COLOR_MAGENTA "\nPERFORMANCE & RESOURCES:\n" COLOR_RESET);
         printf("  -threads <n>        : %d (0=auto)\n", inst->num_threads);
-        printf("  -memory <MB>        : %d MB\n", inst->available_memory);
-        printf("  -max_nodes <n>      : %d (-1=unlimited)\n", inst->max_nodes);
+        printf("  -verbose <n>        : %d\n", VERBOSE);
 
         printf(COLOR_MAGENTA "\nOPTIMIZATION CONSTRAINTS:\n" COLOR_RESET);
         printf("  -seed <n>           : %d\n", inst->randomseed);
-        printf("  -time_limit <s>     : %.2f sec\n", inst->timelimit);
-        printf("  -cutoff <val>       : %.2f\n", inst->cutoff);
-        printf("  -int                : %s\n", inst->integer_costs ? "Enabled" : "Disabled");
+        if (inst->timelimit >= CPX_INFBOUND)
+            printf("  -time_limit <s>     : Infinity\n");
+        else
+            printf("  -time_limit <s>     : %.3f sec\n", inst->timelimit);
+
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
     }
@@ -348,59 +337,87 @@ void parse_command_line(int argc, char **argv, instance *inst)
  * @param tour Array representing the order of visited nodes (0-based internally).
  * @param num_nodes The total number of nodes in the tour.
  */
-void print_tour(int *tour, int num_nodes) {
+void print_tour(int *tour, int num_nodes)
+{
     printf(COLOR_BLUE "Tour sequence: " COLOR_RESET);
-    for (int i = 0; i < num_nodes; i++) {
+    for (int i = 0; i < num_nodes; i++)
+    {
         // Shift back to 1-based indexing for output
-        printf("%d ", tour[i] + 1); 
+        printf("%d ", tour[i] + 1);
     }
     printf("\n");
 }
 
 /**
- * Validates the structural integrity of a given tour array and calculates its total cost.
- * Checks that the array contains a mathematically valid cycle with no duplicates or out-of-bound nodes.
+ * Calculates the total cost of a tour using the standard Euclidean distance.
+ * @param inst Pointer to the instance structure.
+ * @param tour Array representing the sequence of visited nodes.
+ * @return The total cost of the tour.
+ */
+double calculate_cost(instance *inst, int *tour)
+{
+    double cost = 0.0;
+    for (int i = 0; i < inst->nnodes - 1; i++)
+    {
+        cost += dist(tour[i], tour[i + 1], inst);
+    }
+    cost += dist(tour[inst->nnodes - 1], tour[0], inst);
+    return cost;
+}
+
+/**
+ * Validates the structural integrity and cost consistency of a given tour.
+ * Checks for a valid cycle, no duplicates, correct bounds, and matches the reported cost.
  * @param tour Array representing the sequence of visited nodes.
  * @param inst Pointer to the instance structure containing node coordinates.
- * @return 1 if the sequence forms a valid continuous cycle, 0 if invalid.
+ * @return 1 if the tour is valid, 0 otherwise.
  */
-int check_tour(int *tour, instance *inst) {
+int validate_tour(solution *sol, instance *inst)
+{
     int num_nodes = inst->nnodes;
     int *visited = (int *)calloc(num_nodes, sizeof(int));
-    
-    for (int i = 0; i < num_nodes; i++) {
+    int *tour = sol->tour;
+
+    // Check 1: Node bounds and duplicates
+    for (int i = 0; i < num_nodes; i++)
+    {
         int node = tour[i];
-        if (node < 0 || node >= num_nodes) {
-            printf(COLOR_RED "Error: Node %d is out of bounds!\n" COLOR_RESET, node);
+        if (node < 0 || node >= num_nodes)
+        {
+            printf(COLOR_RED "Validation Error: Node %d is out of bounds [0, %d]!\n" COLOR_RESET, node, num_nodes - 1);
             free(visited);
-            return 0; // Invalid
+            return 0;
         }
         visited[node]++;
     }
-    
-    for (int i = 0; i < num_nodes; i++) {
-        if (visited[i] != 1) {
-            printf(COLOR_RED "Error: Node %d was visited %d times (must be exactly 1)!\n" COLOR_RESET, i, visited[i]);
+
+    // Check 2: Each node visited exactly once
+    for (int i = 0; i < num_nodes; i++)
+    {
+        if (visited[i] != 1)
+        {
+            printf(COLOR_RED "Validation Error: Node %d was visited %d times (must be exactly 1)!\n" COLOR_RESET, i, visited[i]);
             free(visited);
-            return 0; // Invalid
+            return 0;
         }
     }
-    
-    // --- Calculate Total Cost ---
-    double total_cost = 0.0;
-    for (int i = 0; i < num_nodes - 1; i++) {
-        total_cost += dist(tour[i], tour[i+1], inst); // Distance from i to i+1
-    }
-    // Add the distance to close the loop (from the last node back to the first)
-    total_cost += dist(tour[num_nodes - 1], tour[0], inst);
+    free(visited); // Visited array is no longer needed
 
-    if (VERBOSE >= 1) {
-        printf(COLOR_GREEN "\n... Tour check passed: Valid cycle.\n" COLOR_RESET);
-        printf(COLOR_CYAN "... TOTAL TOUR COST: %.2f\n" COLOR_RESET, total_cost);
+    // Check 3: Recalculate cost and compare with the solution's reported cost
+    double total_cost = calculate_cost(inst, tour);
+
+    if (fabs(total_cost - sol->cost) > 0.01)
+    {
+        printf(COLOR_YELLOW "\nValidation Warning: Calculated cost %.3f does not match reported cost %.3f\n" COLOR_RESET, total_cost, sol->cost);
+        return 0;
     }
-    
-    free(visited);
-    return 1; // Valid cycle
+
+    if (VERBOSE >= 3)
+    {
+        printf(COLOR_GREEN "\n... Validation Passed: Tour is valid with cost %.3f.\n" COLOR_RESET, total_cost);
+    }
+
+    return 1;
 }
 
 /**
@@ -409,28 +426,31 @@ int check_tour(int *tour, instance *inst) {
  * @param inst Pointer to the instance structure containing the coordinate map.
  * @param tour Array representing the sequence of nodes to plot.
  */
-void plot_tour(instance *inst, int *tour) {
-    
+void plot_tour(instance *inst, int *tour)
+{
+
     FILE *gnuplotPipe = popen("gnuplot", "w");
-    if (!gnuplotPipe) {
+    if (!gnuplotPipe)
+    {
         printf(COLOR_RED "Error: Could not open GNUplot.\n" COLOR_RESET);
         return;
     }
 
-    // Output a PNG file 
+    // Output a PNG file
     fprintf(gnuplotPipe, "set terminal pngcairo size 800,600\n");
     fprintf(gnuplotPipe, "set output 'tour_plot.png'\n");
-    
+
     fprintf(gnuplotPipe, "set title 'TSP Tour'\n");
-    fprintf(gnuplotPipe, "set key off\n"); 
+    fprintf(gnuplotPipe, "set key off\n");
     fprintf(gnuplotPipe, "plot '-' with linespoints pt 7 lc rgb 'blue'\n");
 
     // Loop through the tour array to feed the coordinates in order
-    for (int i = 0; i < inst->nnodes; i++) {
+    for (int i = 0; i < inst->nnodes; i++)
+    {
         int node = tour[i];
         fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[node], inst->ycoord[node]);
     }
-    
+
     // Print the starting node again to close the plotted cycle
     int start_node = tour[0];
     fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[start_node], inst->ycoord[start_node]);
@@ -449,50 +469,92 @@ void plot_tour(instance *inst, int *tour) {
  * @param tour Pre-allocated array to be filled with the valid 0-based node sequence.
  * @return 1 on successful read and parse, 0 if the corresponding optimal tour file does not exist.
  */
-int parse_tour(instance *inst, int *tour) {
+int parse_tour(instance *inst, int *tour)
+{
     // Dynamically generate the optimal filename from the instance input file
     char opt_filename[1000];
     strcpy(opt_filename, inst->input_file);
     char *ext = strrchr(opt_filename, '.');
-    if (ext != NULL) {
+    if (ext != NULL)
+    {
         strcpy(ext, ".opt.tour");
-    } else {
+    }
+    else
+    {
         strcat(opt_filename, ".opt.tour"); // Fallback just in case
     }
 
     // Safely check if the file exists
     FILE *file = fopen(opt_filename, "r");
-    if (!file) {
-        if (VERBOSE >= 1)
+    if (!file)
+    {
+        if (VERBOSE >= 3)
             printf(COLOR_YELLOW "\n--- Notice: No optimal tour file found at %s ---\n" COLOR_RESET, opt_filename);
         return 0; // Return 0 (False) to tell main.c to skip the checks
     }
-    
-    if (VERBOSE >= 1)
+
+    if (VERBOSE >= 3)
         printf("\n" COLOR_MAGENTA "Loading optimal tour... " COLOR_RESET "\n");
 
     // Parse the file
     char line[256];
     int active_section = 0;
     int idx = 0;
-    
-    while (fgets(line, sizeof(line), file) != NULL) {
-        if (strncmp(line, "TOUR_SECTION", 12) == 0) {
+
+    while (fgets(line, sizeof(line), file) != NULL)
+    {
+        if (strncmp(line, "TOUR_SECTION", 12) == 0)
+        {
             active_section = 1;
             continue;
         }
-        if (active_section) {
+        if (active_section)
+        {
             int node = atoi(line);
-            if (node == -1) break; 
-            
-            if (idx >= inst->nnodes) {
+            if (node == -1)
+                break;
+
+            if (idx >= inst->nnodes)
+            {
                 print_error("Optimal tour file contains more nodes than the instance dimension!");
             }
-            
-            tour[idx++] = node - 1; 
+
+            tour[idx++] = node - 1;
         }
     }
     fclose(file);
 
     return 1; // Return 1 (True) to indicate success
+}
+
+/**
+ * Generates a random TSP instance with specified dimensions and seed.
+ * @param nnodes Number of nodes.
+ * @param x_max Maximum x-coordinate value.
+ * @param y_max Maximum y-coordinate value.
+ * @param seed Random seed for reproducibility.
+ * @return A fully initialized instance structure with random coordinates. No filename is associated with it.
+ */
+instance generate_random_instance(int nnodes, double x_max, double y_max, int seed)
+{
+    instance inst;
+    memset(&inst, 0, sizeof(instance));
+
+    inst.nnodes = nnodes;
+    inst.randomseed = seed;
+    inst.timelimit = CPX_INFBOUND; // Default to infinite time
+    inst.num_threads = 0;          // Default to auto
+
+    inst.xcoord = (double *)calloc(nnodes, sizeof(double));
+    inst.ycoord = (double *)calloc(nnodes, sizeof(double));
+
+    srand(seed);
+
+    for (int i = 0; i < nnodes; i++)
+    {
+        inst.xcoord[i] = ((double)rand() / RAND_MAX) * x_max;
+        inst.ycoord[i] = ((double)rand() / RAND_MAX) * y_max;
+    }
+
+    return inst;
 }
