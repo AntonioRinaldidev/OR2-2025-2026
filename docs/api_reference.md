@@ -50,7 +50,9 @@ Parses command-line arguments to configure solver settings.
 - **Flags handled**:
   - `-file <path>`: Input TSPLIB file.
   - `-threads <n>`: Number of threads (0 for auto).
-  - `-seed <n>`: Random seed.
+  - `-seed <n>`: Random seed (required for random generation).
+  - `-node_number <n>`: Number of nodes for random generation.
+  - `-verbose <n>`: Verbosity level (0-5).
   - `-time_limit <s>` or `-time <s>`: Execution time limit in seconds.
 
 ### `void parse_instance(instance *inst)`
@@ -123,3 +125,15 @@ Calculates the **Squared Euclidean distance** between node `i` and node `j`.
 ### `solution`
 - `tour`: Array of node indices representing the path.
 - `cost`: Total length of the tour.
+
+---
+
+## 6. Recent Additions
+
+### `double calculate_cost(instance *inst, int *tour)`
+Calculates the total Euclidean cost of a tour.
+- **Usage**: Centralized function used by `greedyNN` (final step), `validate_tour`, and `main` to ensure cost consistency.
+
+### CLI Updates
+- **`-node_number <n>`**: Specifies size for random instances (mutually exclusive with `-file`).
+- **`-verbose <n>`**: Sets internal `VERBOSE` level (0=Silent, 1=Info, 2=Default, 3=Detail, 4=Debug, 5=Trace).

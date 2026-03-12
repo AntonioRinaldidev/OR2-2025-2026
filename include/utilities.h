@@ -6,7 +6,6 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <cplex.h>
 #include <pthread.h>
@@ -55,15 +54,15 @@ typedef struct
     solution best_solution;
 
 } instance;
-
+void free_instance(instance *inst);
 void print_error(const char *err);
 void parse_instance(instance *inst);
 void parse_command_line(int argc, char **argv, instance *inst);
-void compute_distances(instance *inst);
 
 // --- TSP UTILITY FUNCTIONS ---
 void print_tour(int *tour, int num_nodes);
 int validate_tour(solution *sol, instance *inst);
+void compute_distances(instance *inst);
 double calculate_cost(instance *inst, int *tour);
 void plot_tour(instance *inst, int *tour);
 int parse_tour(instance *inst, int *tour);

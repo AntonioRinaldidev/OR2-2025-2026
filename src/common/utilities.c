@@ -2,6 +2,23 @@
 #include "utilities.h"
 
 int VERBOSE = 2;
+/**
+ * Frees all dynamically allocated memory within the instance structure.
+ * Prevents memory leaks by safely deallocating arrays for coordinates, demands, and loads.
+ * @param inst Pointer to the instance structure to be cleaned up.
+ */
+
+void free_instance(instance *inst)
+{
+    if (inst->xcoord)
+        free(inst->xcoord);
+    if (inst->ycoord)
+        free(inst->ycoord);
+    if (inst->best_solution.tour)
+        free(inst->best_solution.tour);
+    if (inst->dists)
+        free(inst->dists);
+}
 
 /**
  * Prints an error message in red to stdout and terminates the program.
@@ -28,6 +45,9 @@ void parse_instance(instance *inst)
     FILE *file = fopen(inst->input_file, "r");
     if (file == NULL)
         print_error(" input file not found!");
+
+    inst->xcoord = NULL;
+    inst->ycoord = NULL;
 
     inst->nnodes = -1;
 
@@ -152,8 +172,32 @@ void parse_instance(instance *inst)
  */
 void compute_distances(instance *inst)
 {
+    // 1. Fix Memory Leak & Stale Cache
+    // We must free the old matrix AND set the pointer to NULL.
+    // Setting it to NULL ensures dist_sq() calculates values from scratch
+    // instead of trying to read from a freed or stale array.
+    if (inst->dists)
+    {
+        free(inst->dists);
+        inst->dists = NULL;
+    }
+
     int n = inst->nnodes;
-    double *d = (double *)malloc(n * n * sizeof(double));
+
+    // 2. Memory Optimization (Smart Caching)
+    // If the instance is too large, the matrix consumes too much RAM (risk of swapping).
+    // Threshold: ~4000 nodes (4000^2 * 8 bytes ≈ 128 MB).
+    // If exceeded, we skip the cache; dist() functions will auto-calculate on the fly.
+    if (n > 4000)
+    {
+        if (VERBOSE >= 2)
+            printf(COLOR_YELLOW "Optimization: Instance too large (%d nodes). Skipping distance matrix allocation.\n" COLOR_RESET, n);
+        return;
+    }
+
+    double *d = (double *)malloc((size_t)n * n * sizeof(double));
+    if (d == NULL)
+        print_error("Memory allocation failed for distance matrix.");
 
     for (int i = 0; i < n; i++)
     {
@@ -306,7 +350,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     {
         printf("\n\n" COLOR_MAGENTA "Configuration Summary:" COLOR_RESET "\n");
         printf("----------------------------------------------------------------------\n");
-        printf(" TSP/VRP SOLVER - Current Configuration\n");
+        printf(" TSP SOLVER - Current Configuration\n");
         printf("----------------------------------------------------------------------\n");
 
         printf(COLOR_MAGENTA "GENERAL LOGIC & FILES:\n" COLOR_RESET);

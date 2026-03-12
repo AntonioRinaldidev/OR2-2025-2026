@@ -3,23 +3,6 @@
 #include <time.h>
 
 /**
- * Frees all dynamically allocated memory within the instance structure.
- * Prevents memory leaks by safely deallocating arrays for coordinates, demands, and loads.
- * @param inst Pointer to the instance structure to be cleaned up.
- */
-void free_instance(instance *inst)
-{
-    if (inst->xcoord)
-        free(inst->xcoord);
-    if (inst->ycoord)
-        free(inst->ycoord);
-    if (inst->best_solution.tour)
-        free(inst->best_solution.tour);
-    if (inst->dists)
-        free(inst->dists);
-}
-
-/**
  * Main entry point for the TSP/VRP solver.
  * Initializes the problem instance, parses command-line arguments, reads the input map,
  * and attempts to load, validate, and plot an optimal solution if one is available.
@@ -108,6 +91,7 @@ int main(int argc, char **argv)
             if (time_elapsed > inst.timelimit)
             {
                 printf(COLOR_YELLOW "\nTime limit reached (%.3f s). Stopping early.\n" COLOR_RESET, time_elapsed);
+
                 break;
             }
 
@@ -138,7 +122,6 @@ int main(int argc, char **argv)
         if (VERBOSE >= 1)
         {
             printf("Best Greedy NN Cost: " COLOR_CYAN "%.3f\n" COLOR_RESET, best_nn_sol.cost);
-            print_tour(best_nn_sol.tour, inst.nnodes);
 
             if (optimal_cost != INF)
             {
@@ -147,6 +130,8 @@ int main(int argc, char **argv)
                 printf("Gap: %.3f%%\n", gap);
             }
         }
+        if (VERBOSE >= 4)
+            print_tour(best_nn_sol.tour, inst.nnodes);
 
         // Check and plot the result
         if (validate_tour(&best_nn_sol, &inst))
