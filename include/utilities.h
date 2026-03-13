@@ -10,6 +10,8 @@
 #include <cplex.h>
 #include <pthread.h>
 
+#include "structures.h"
+
 #define COLOR_RED "\033[1;31m"
 #define COLOR_GREEN "\033[1;32m"
 #define COLOR_YELLOW "\033[1;33m"
@@ -34,30 +36,11 @@ extern int VERBOSE; // Verbosity level (0=silent, 1=info, 2=default, 3=detail, 4
 #define NUM_DECIMALS 2
 #define COST_MULTIPLIER 100 // 10^NUM_DECIMALS
 
-typedef struct
-{
-    double cost;
-    int *tour;
-} solution;
-
-typedef struct
-{
-    int nnodes;
-    double *xcoord;
-    double *ycoord;
-    double *dists; // Flattened 2D array for distance matrix
-
-    int randomseed;
-    int num_threads;
-    double timelimit;
-    char input_file[1000];
-    solution best_solution;
-
-} instance;
 void free_instance(instance *inst);
 void print_error(const char *err);
 void parse_instance(instance *inst);
 void parse_command_line(int argc, char **argv, instance *inst);
+void swap(int *a, int *b);
 
 // --- TSP UTILITY FUNCTIONS ---
 void print_tour(int *tour, int num_nodes);
