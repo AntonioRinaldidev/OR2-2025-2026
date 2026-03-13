@@ -165,6 +165,13 @@ void parse_instance(instance *inst)
     fclose(file);
 }
 
+void swap(int *a, int *b)
+{
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
 /**
  * Pre-computes the distance matrix for the instance.
  * Stores the result in inst->dists.
@@ -278,6 +285,14 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
+        // 2-Opt Heuristic Optimization
+        if (strcmp(argv[i], "-2opt") == 0)
+        {
+            strcpy(inst->opt_name, "2-opt");
+            inst->opt_applied = 1;
+            continue;
+        }
+
         // total time limit
         if (strcmp(argv[i], "-time_limit") == 0 || strcmp(argv[i], "-time") == 0)
         {
@@ -341,6 +356,10 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("\nOPTIMIZATION CONSTRAINTS:\n");
         printf("  -seed <n>           Set the random seed for reproducible results\n");
         printf("  -time_limit <s>     Maximum execution time in seconds before termination\n");
+
+        printf("\nOPTIMIZATION HEURISTICS:\n");
+        printf("  -2opt               Apply 2-opt local search heuristic\n");
+        printf("\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
         exit(1);
@@ -369,6 +388,13 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -time_limit <s>     : Infinity\n");
         else
             printf("  -time_limit <s>     : %.3f sec\n", inst->timelimit);
+        printf(COLOR_MAGENTA "\nOPTIMIZATION HEURISTICS:\n" COLOR_RESET);
+        if (inst->opt_applied)
+            printf("  -2opt               : Applied\n");
+        else
+            printf("  -2opt               : Not applied\n");
+
+        printf("\n");
 
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
