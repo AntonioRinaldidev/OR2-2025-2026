@@ -415,7 +415,7 @@ void print_tour(int *tour, int num_nodes)
         // Shift back to 1-based indexing for output
         printf("%d ", tour[i] + 1);
     }
-    printf("\n");
+    printf("\n\n");
 }
 
 /**
@@ -495,8 +495,9 @@ int validate_tour(solution *sol, instance *inst)
  * It writes the node coordinates to a temporary GNUplot pipe and saves the graph as a PNG image.
  * @param inst Pointer to the instance structure containing the coordinate map.
  * @param tour Array representing the sequence of nodes to plot.
+ * @param title Title for the plot.
  */
-void plot_tour(instance *inst, int *tour)
+void plot_tour(instance *inst, int *tour, char *title) // Function to generate a plot of the tour title)
 {
 
     FILE *gnuplotPipe = popen("gnuplot", "w");
@@ -508,7 +509,7 @@ void plot_tour(instance *inst, int *tour)
 
     // Output a PNG file
     fprintf(gnuplotPipe, "set terminal pngcairo size 800,600\n");
-    fprintf(gnuplotPipe, "set output 'tour_plot.png'\n");
+    fprintf(gnuplotPipe, "set output 'tour_plot_%s.png'\n", title); // Save with a name based on the input file
 
     fprintf(gnuplotPipe, "set title 'TSP Tour'\n");
     fprintf(gnuplotPipe, "set key off\n");

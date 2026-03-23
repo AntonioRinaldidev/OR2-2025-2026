@@ -47,7 +47,7 @@ void print_tour(int *tour, int num_nodes);
 int validate_tour(solution *sol, instance *inst);
 void compute_distances(instance *inst);
 double calculate_cost(instance *inst, int *tour);
-void plot_tour(instance *inst, int *tour);
+void plot_tour(instance *inst, int *tour, char *title);
 int parse_tour(instance *inst, int *tour);
 
 static inline double dist(int i, int j, instance *inst)

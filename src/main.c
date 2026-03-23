@@ -1,5 +1,6 @@
 #include "utilities.h"
 #include "greedyNN.h"
+#include "2_opt.h"
 #include <time.h>
 
 /**
@@ -82,6 +83,10 @@ int main(int argc, char **argv)
         solution current_sol;
         current_sol.tour = (int *)calloc(inst.nnodes, sizeof(int));
         clock_t start_time = clock();
+        double best_cost_diff = 0.0;
+        int pa, pb;
+        int count_improvements = 0;
+
         for (int start_node = 0; start_node < inst.nnodes; start_node++)
         {
             current_sol.cost = 0.0; // Reset cost for each run
@@ -97,15 +102,59 @@ int main(int argc, char **argv)
 
             greedyNN(&inst, &current_sol, start_node);
 
-            int is_new_best = 0; // Flag to check for improvement
-            if (current_sol.cost < best_nn_sol.cost)
+            // Apply 2-opt local search to every solution generated
+            if (inst.opt_applied)
             {
+                int local_swaps = 0;
+                double pre_opt_cost = current_sol.cost;
+                while (1)
+                {
+                    best_cost_diff = find_best_two_opt(&inst, &current_sol, &pa, &pb);
+                    if (best_cost_diff >= -1e-5)
+                        break;
+
+                    apply_two_opt(current_sol.tour, pa, pb);
+                    if (VERBOSE >= 3)
+                    {
+                        printf("  - Applied 2-opt swap between positions %d and %d | Cost improvement: " COLOR_GREEN "%.3f\n" COLOR_RESET, pa, pb, best_cost_diff);
+                    }
+                    local_swaps++;
+                    current_sol.cost += best_cost_diff;
+                }
+
+                if (VERBOSE >= 3 && local_swaps > 0)
+                {
+                    printf(COLOR_CYAN "  => 2-opt finished: %d swaps applied, total cost reduced by %.3f\n" COLOR_RESET,
+                           local_swaps, pre_opt_cost - current_sol.cost);
+                }
+            }
+
+            // Recalculate cost cleanly from scratch to prevent floating-point drift
+            current_sol.cost = calculate_cost(&inst, current_sol.tour);
+
+            int is_new_best = 0;                            // Flag to check for improvement
+            if (current_sol.cost < best_nn_sol.cost - 1e-5) // Use a small tolerance
+            {
+
                 is_new_best = 1;
                 best_nn_sol.cost = current_sol.cost;
                 memcpy(best_nn_sol.tour, current_sol.tour, inst.nnodes * sizeof(int));
+
+                char plot_title[100];
+                snprintf(plot_title, sizeof(plot_title), "greedy_nn_optimized_%d", count_improvements);
+                count_improvements++;
+
+                printf(COLOR_GREEN "\nNew best solution found with cost %.3f \n" COLOR_RESET, best_nn_sol.cost);
+
+                if (VERBOSE >= 2)
+                {
+
+                    print_tour(best_nn_sol.tour, inst.nnodes);
+                    plot_tour(&inst, current_sol.tour, plot_title);
+                }
             }
 
-            if (VERBOSE >= 3)
+            if (VERBOSE >= 2)
             {
                 if (is_new_best)
                 {
@@ -138,7 +187,7 @@ int main(int argc, char **argv)
         {
             if (VERBOSE >= 1)
             {
-                plot_tour(&inst, best_nn_sol.tour);
+                plot_tour(&inst, best_nn_sol.tour, "final");
             }
         }
         else

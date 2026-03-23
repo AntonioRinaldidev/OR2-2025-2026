@@ -54,6 +54,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 # Pulizia
 clean:
 	@rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@rm -rf *.png
 	@echo "$(RED)Repository cleaned.$(NC)"
 
 # Comando comodo per vedere i file presenti
