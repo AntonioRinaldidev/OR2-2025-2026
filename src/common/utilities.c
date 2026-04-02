@@ -2,6 +2,7 @@
 #include "utilities.h"
 
 int VERBOSE = 2;
+double EPSILON = 1e-5;
 /**
  * Frees all dynamically allocated memory within the instance structure.
  * Prevents memory leaks by safely deallocating arrays for coordinates, demands, and loads.
@@ -165,6 +166,11 @@ void parse_instance(instance *inst)
     fclose(file);
 }
 
+/**
+ * Swaps the values of two integers.
+ * @param a Pointer to the first integer
+ * @param b Pointer to the second integer
+ */
 void swap(int *a, int *b)
 {
     int temp = *a;
@@ -172,48 +178,18 @@ void swap(int *a, int *b)
     *b = temp;
 }
 
-/**
- * Pre-computes the distance matrix for the instance.
- * Stores the result in inst->dists.
- * @param inst Pointer to the instance structure.
- */
-void compute_distances(instance *inst)
+void update_best_solution(instance *inst, solution *new_sol)
 {
-    // 1. Fix Memory Leak & Stale Cache
-    // We must free the old matrix AND set the pointer to NULL.
-    // Setting it to NULL ensures dist_sq() calculates values from scratch
-    // instead of trying to read from a freed or stale array.
-    if (inst->dists)
+    if (new_sol->cost < inst->best_solution.cost)
     {
-        free(inst->dists);
-        inst->dists = NULL;
+        inst->best_solution.cost = new_sol->cost;
+        inst->best_solution.tour = (int *)calloc(inst->nnodes, sizeof(int));
+        memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
     }
-
-    int n = inst->nnodes;
-
-    // 2. Memory Optimization (Smart Caching)
-    // If the instance is too large, the matrix consumes too much RAM (risk of swapping).
-    // Threshold: ~4000 nodes (4000^2 * 8 bytes ≈ 128 MB).
-    // If exceeded, we skip the cache; dist() functions will auto-calculate on the fly.
-    if (n > 4000)
+    else
     {
-        if (VERBOSE >= 2)
-            printf(COLOR_YELLOW "Optimization: Instance too large (%d nodes). Skipping distance matrix allocation.\n" COLOR_RESET, n);
-        return;
+        free(new_sol->tour);
     }
-
-    double *d = (double *)malloc((size_t)n * n * sizeof(double));
-    if (d == NULL)
-        print_error("Memory allocation failed for distance matrix.");
-
-    for (int i = 0; i < n; i++)
-    {
-        for (int j = 0; j < n; j++)
-        {
-            d[i * n + j] = dist_sq(i, j, inst);
-        }
-    }
-    inst->dists = d;
 }
 
 /**
@@ -401,6 +377,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     }
 }
 
+// --- TSP UTILITY FUNCTIONS ---
 /**
  * Prints the sequence of a given tour to stdout.
  * Outputs the node indices adjusted to a 1-based format for readability.
@@ -415,24 +392,7 @@ void print_tour(int *tour, int num_nodes)
         // Shift back to 1-based indexing for output
         printf("%d ", tour[i] + 1);
     }
-    printf("\n\n");
-}
-
-/**
- * Calculates the total cost of a tour using the standard Euclidean distance.
- * @param inst Pointer to the instance structure.
- * @param tour Array representing the sequence of visited nodes.
- * @return The total cost of the tour.
- */
-double calculate_cost(instance *inst, int *tour)
-{
-    double cost = 0.0;
-    for (int i = 0; i < inst->nnodes - 1; i++)
-    {
-        cost += dist(tour[i], tour[i + 1], inst);
-    }
-    cost += dist(tour[inst->nnodes - 1], tour[0], inst);
-    return cost;
+    printf("\n");
 }
 
 /**
@@ -442,7 +402,7 @@ double calculate_cost(instance *inst, int *tour)
  * @param inst Pointer to the instance structure containing node coordinates.
  * @return 1 if the tour is valid, 0 otherwise.
  */
-int validate_tour(solution *sol, instance *inst)
+int is_tour_feasible(solution *sol, instance *inst)
 {
     int num_nodes = inst->nnodes;
     int *visited = (int *)calloc(num_nodes, sizeof(int));
@@ -488,6 +448,67 @@ int validate_tour(solution *sol, instance *inst)
     }
 
     return 1;
+}
+
+/**
+ * Pre-computes the distance matrix for the instance.
+ * Stores the result in inst->dists.
+ * @param inst Pointer to the instance structure.
+ */
+void compute_distances(instance *inst)
+{
+    // 1. Fix Memory Leak & Stale Cache
+    // We must free the old matrix AND set the pointer to NULL.
+    // Setting it to NULL ensures dist_sq() calculates values from scratch
+    // instead of trying to read from a freed or stale array.
+    if (inst->dists)
+    {
+        free(inst->dists);
+        inst->dists = NULL;
+    }
+
+    int n = inst->nnodes;
+
+    // 2. Memory Optimization (Smart Caching)
+    // If the instance is too large, the matrix consumes too much RAM (risk of swapping).
+    // Threshold: ~4000 nodes (4000^2 * 8 bytes ≈ 128 MB).
+    // If exceeded, we skip the cache; dist() functions will auto-calculate on the fly.
+    if (n > 4000)
+    {
+        if (VERBOSE >= 2)
+            printf(COLOR_YELLOW "Optimization: Instance too large (%d nodes). Skipping distance matrix allocation.\n" COLOR_RESET, n);
+        return;
+    }
+
+    double *d = (double *)malloc((size_t)n * n * sizeof(double));
+    if (d == NULL)
+        print_error("Memory allocation failed for distance matrix.");
+
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+        {
+            d[i * n + j] = dist_sq(i, j, inst);
+        }
+    }
+    inst->dists = d;
+}
+
+/**
+ * Calculates the total cost of a tour using the standard Euclidean distance.
+ * @param inst Pointer to the instance structure.
+ * @param tour Array representing the sequence of visited nodes.
+ * @return The total cost of the tour.
+ */
+double calculate_cost(instance *inst, int *tour)
+{
+    double cost = 0.0;
+    for (int i = 0; i < inst->nnodes - 1; i++)
+    {
+        cost += dist(tour[i], tour[i + 1], inst);
+    }
+    cost += dist(tour[inst->nnodes - 1], tour[0], inst);
+    return cost;
 }
 
 /**
@@ -606,6 +627,8 @@ int parse_tour(instance *inst, int *tour)
  * @param seed Random seed for reproducibility.
  * @return A fully initialized instance structure with random coordinates. No filename is associated with it.
  */
+
+// --- INSTANCES RANDOM GENERATOR ---
 instance generate_random_instance(int nnodes, double x_max, double y_max, int seed)
 {
     instance inst;

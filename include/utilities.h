@@ -21,8 +21,8 @@
 #define COLOR_MAGENTA "\033[1;35m"
 #define COLOR_CYAN "\033[1;36m"
 #define COLOR_RESET "\033[0m"
-
-extern int VERBOSE; // Verbosity level (0=silent, 1=info, 2=default, 3=detail, 4=debug, 5=trace)
+extern double EPSILON; // Tolerance for floating-point comparisons in cost validation
+extern int VERBOSE;    // Verbosity level (0=silent, 1=info, 2=default, 3=detail, 4=debug, 5=trace)
 /*
  * 0: Silent mode (only fatal errors)
  * 1: Info mode (final results, major status changes)
@@ -41,10 +41,12 @@ void print_error(const char *err);
 void parse_instance(instance *inst);
 void parse_command_line(int argc, char **argv, instance *inst);
 void swap(int *a, int *b);
+void update_best_solution(instance *inst, solution *new_sol);
+// TODO: Add function that returns a random number between 0 and 1.
 
 // --- TSP UTILITY FUNCTIONS ---
 void print_tour(int *tour, int num_nodes);
-int validate_tour(solution *sol, instance *inst);
+int is_tour_feasible(solution *sol, instance *inst);
 void compute_distances(instance *inst);
 double calculate_cost(instance *inst, int *tour);
 void plot_tour(instance *inst, int *tour, char *title);
