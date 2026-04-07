@@ -16,7 +16,7 @@ The project is structured into three main components:
 
 ### `instance`
 The central structure holding all problem data.
-- **Coordinates**: `xcoord`, `ycoord` arrays storing node positions.
+- **Coordinates**: `vertices` array of `vertex` structures storing node positions.
 - **Distance Matrix**: `dists`, a flattened 1D array representing the $N \times N$ matrix.
 - **Parameters**: `timelimit`, `randomseed`, `num_threads`.
 

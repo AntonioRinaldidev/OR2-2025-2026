@@ -11,10 +11,8 @@ double EPSILON = 1e-5;
 
 void free_instance(instance *inst)
 {
-    if (inst->xcoord)
-        free(inst->xcoord);
-    if (inst->ycoord)
-        free(inst->ycoord);
+    if (inst->vertices)
+        free(inst->vertices);
     if (inst->best_solution.tour)
         free(inst->best_solution.tour);
     if (inst->dists)
@@ -47,8 +45,7 @@ void parse_instance(instance *inst)
     if (file == NULL)
         print_error(" input file not found!");
 
-    inst->xcoord = NULL;
-    inst->ycoord = NULL;
+    inst->vertices = NULL;
 
     inst->nnodes = -1;
 
@@ -110,8 +107,7 @@ void parse_instance(instance *inst)
             if (do_print)
                 printf("Number of nodes: " COLOR_BLUE "%d" COLOR_RESET "\n", inst->nnodes);
 
-            inst->ycoord = (double *)calloc(inst->nnodes, sizeof(double));
-            inst->xcoord = (double *)calloc(inst->nnodes, sizeof(double));
+            inst->vertices = (vertex *)calloc(inst->nnodes, sizeof(vertex));
             continue;
         }
 
@@ -149,13 +145,13 @@ void parse_instance(instance *inst)
             token1 = strtok(NULL, " :\t\r\n");
             if (token1 == NULL)
                 print_error("Format error: x coordinate missing in NODE_COORD_SECTION");
-            inst->xcoord[i] = atof(token1);
+            inst->vertices[i].xcoord = atof(token1);
             token1 = strtok(NULL, " :\t\r\n");
             if (token1 == NULL)
                 print_error("Format error: y coordinate missing in NODE_COORD_SECTION");
-            inst->ycoord[i] = atof(token1);
+            inst->vertices[i].ycoord = atof(token1);
             if (do_print)
-                printf("Node " COLOR_YELLOW "[%4d] " COLOR_RESET "at coordinates ( " COLOR_CYAN "%6.0lf " COLOR_RESET ", " COLOR_CYAN "%6.0lf " COLOR_RESET ")\n", i + 1, inst->xcoord[i], inst->ycoord[i]);
+                printf("Node " COLOR_YELLOW "[%4d] " COLOR_RESET "at coordinates ( " COLOR_CYAN "%6.0lf " COLOR_RESET ", " COLOR_CYAN "%6.0lf " COLOR_RESET ")\n", i + 1, inst->vertices[i].xcoord, inst->vertices[i].ycoord);
             continue;
         }
     }
@@ -206,8 +202,9 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
     strcpy(inst->input_file, "NULL");
 
-    inst->num_threads = 0; // Controls parallel processing (0 means automatic detection of available cores)
-    inst->nnodes = 0;      // Number of nodes for random generation
+    inst->num_threads = 0;        // Controls parallel processing (0 means automatic detection of available cores)
+    inst->nnodes = 0;             // Number of nodes for random generation
+    inst->percentage_elites = 10; // Default to 10% elites for Genetic Algorithm
 
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
@@ -266,6 +263,17 @@ void parse_command_line(int argc, char **argv, instance *inst)
         {
             strcpy(inst->opt_name, "2-opt");
             inst->opt_applied = 1;
+            continue;
+        }
+
+        // Percentage of elites
+        if (strcmp(argv[i], "-elites") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value for -elites");
+            inst->percentage_elites = atoi(argv[++i]);
+            if (inst->percentage_elites < 0 || inst->percentage_elites > 100)
+                print_error(" elite percentage must be between 0 and 100");
             continue;
         }
 
@@ -335,6 +343,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
         printf("\nOPTIMIZATION HEURISTICS:\n");
         printf("  -2opt               Apply 2-opt local search heuristic\n");
+        printf("  -elites <n>         Percentage of elites to keep in Genetic Algorithm (0-100, default: 10)\n");
         printf("\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
@@ -369,6 +378,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -2opt               : Applied\n");
         else
             printf("  -2opt               : Not applied\n");
+        printf("  -elites <n>         : %d%%\n", inst->percentage_elites);
 
         printf("\n");
 
@@ -540,12 +550,12 @@ void plot_tour(instance *inst, int *tour, char *title) // Function to generate a
     for (int i = 0; i < inst->nnodes; i++)
     {
         int node = tour[i];
-        fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[node], inst->ycoord[node]);
+        fprintf(gnuplotPipe, "%lf %lf\n", inst->vertices[node].xcoord, inst->vertices[node].ycoord);
     }
 
     // Print the starting node again to close the plotted cycle
     int start_node = tour[0];
-    fprintf(gnuplotPipe, "%lf %lf\n", inst->xcoord[start_node], inst->ycoord[start_node]);
+    fprintf(gnuplotPipe, "%lf %lf\n", inst->vertices[start_node].xcoord, inst->vertices[start_node].ycoord);
 
     // Signal end of data to GNUplot
     fprintf(gnuplotPipe, "e\n");
@@ -638,16 +648,16 @@ instance generate_random_instance(int nnodes, double x_max, double y_max, int se
     inst.randomseed = seed;
     inst.timelimit = CPX_INFBOUND; // Default to infinite time
     inst.num_threads = 0;          // Default to auto
+    inst.percentage_elites = 10;
 
-    inst.xcoord = (double *)calloc(nnodes, sizeof(double));
-    inst.ycoord = (double *)calloc(nnodes, sizeof(double));
+    inst.vertices = (vertex *)calloc(nnodes, sizeof(vertex));
 
     srand(seed);
 
     for (int i = 0; i < nnodes; i++)
     {
-        inst.xcoord[i] = ((double)rand() / RAND_MAX) * x_max;
-        inst.ycoord[i] = ((double)rand() / RAND_MAX) * y_max;
+        inst.vertices[i].xcoord = ((double)rand() / RAND_MAX) * x_max;
+        inst.vertices[i].ycoord = ((double)rand() / RAND_MAX) * y_max;
     }
 
     return inst;

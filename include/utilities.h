@@ -56,8 +56,8 @@ static inline double dist(int i, int j, instance *inst)
 {
     if (inst->dists)
         return sqrt(inst->dists[i * inst->nnodes + j]);
-    double dx = inst->xcoord[i] - inst->xcoord[j];
-    double dy = inst->ycoord[i] - inst->ycoord[j];
+    double dx = inst->vertices[i].xcoord - inst->vertices[j].xcoord;
+    double dy = inst->vertices[i].ycoord - inst->vertices[j].ycoord;
     return sqrt(dx * dx + dy * dy);
 }
 
@@ -65,8 +65,8 @@ static inline double dist_sq(int i, int j, instance *inst)
 {
     if (inst->dists)
         return inst->dists[i * inst->nnodes + j];
-    double dx = inst->xcoord[i] - inst->xcoord[j];
-    double dy = inst->ycoord[i] - inst->ycoord[j];
+    double dx = inst->vertices[i].xcoord - inst->vertices[j].xcoord;
+    double dy = inst->vertices[i].ycoord - inst->vertices[j].ycoord;
     return dx * dx + dy * dy;
 }
 

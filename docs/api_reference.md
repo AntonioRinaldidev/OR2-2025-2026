@@ -21,7 +21,7 @@ The main entry point for the TSP/VRP solver.
 ### `void free_instance(instance *inst)`
 Frees all dynamically allocated memory within the `instance` structure.
 - **Parameters**: `inst` - Pointer to the instance to clean up.
-- **Details**: Safely frees `xcoord`, `ycoord`, `dists`, and the `best_solution.tour` to prevent memory leaks.
+- **Details**: Safely frees `vertices`, `dists`, and the `best_solution.tour` to prevent memory leaks.
 
 ---
 
@@ -118,7 +118,7 @@ Calculates the **Squared Euclidean distance** between node `i` and node `j`.
 
 ### `instance`
 - `nnodes`: Number of nodes.
-- `xcoord`, `ycoord`: Arrays of coordinates.
+- `vertices`: Array of `vertex` structures storing coordinates.
 - `dists`: Flattened distance matrix.
 - `timelimit`, `randomseed`, `num_threads`: Configuration parameters.
 
