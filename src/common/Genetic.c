@@ -26,7 +26,7 @@ void crossover(const instance *inst, int *parent1, int *parent2, int *child1, in
             child2[i] = parent1[i - nnodes / 2];
     }
 }
-void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child)
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes)
 {
     if (!child)
         return;
@@ -37,11 +37,10 @@ void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child)
     if (a > b)
         swap(&a, &b);
 
-    int *in_child = (int *)calloc(nnodes, sizeof(int));
     for (int i = a; i <= b; i++)
     {
         child[i] = parent1[i];
-        in_child[child[i]] = 1;
+        visited_nodes[child[i]] = 1;
     }
 
     int current_p2 = (b + 1) % nnodes;
@@ -49,14 +48,13 @@ void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child)
     for (int i = 0; i < nnodes; i++)
     {
         int candidate = parent2[current_p2];
-        if (!in_child[candidate])
+        if (!visited_nodes[candidate])
         {
             child[current_c] = candidate;
             current_c = (current_c + 1) % nnodes;
         }
         current_p2 = (current_p2 + 1) % nnodes;
     }
-    free(in_child);
 }
 
 void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing)
@@ -115,9 +113,9 @@ void *crossover_worker(void *args)
             // OX1 crossover guarantees permutation safety, so we skip the repair step.
             // It processes one child at a time, so we alternate the parent order.
             if (child1)
-                ox1_crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1);
+                ox1_crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1, arg->visited_nodes);
             if (child2)
-                ox1_crossover(gen->inst, gen->population[p2].tour, gen->population[p1].tour, child2);
+                ox1_crossover(gen->inst, gen->population[p2].tour, gen->population[p1].tour, child2, arg->visited_nodes);
         }
 
         if (child1)
@@ -180,6 +178,8 @@ void natural_selection(generation *gen, generation *new_gen)
 
         args[t].freq = (int *)malloc(gen->inst->nnodes * sizeof(int));
         args[t].missing = (int *)malloc(gen->inst->nnodes * sizeof(int));
+        args[t].visited_nodes = (int *)malloc(gen->inst->nnodes * sizeof(int));
+
         pthread_create(&threads[t], NULL, crossover_worker, &args[t]);
     }
 
@@ -188,6 +188,7 @@ void natural_selection(generation *gen, generation *new_gen)
         pthread_join(threads[t], NULL);
         free(args[t].freq);
         free(args[t].missing);
+        free(args[t].visited_nodes);
     }
 
     // 3. Sort the pool from best (lowest cost) to worst

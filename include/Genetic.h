@@ -29,9 +29,10 @@ typedef struct
     int end_index;
     int *freq;
     int *missing;
+    int *visited_nodes;
 } crossover_args;
 void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2);
-void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child);
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes);
 void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing);
 void *crossover_worker(void *args);
 int compare_solutions(const void *a, const void *b);
