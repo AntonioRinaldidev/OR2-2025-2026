@@ -179,12 +179,12 @@ void update_best_solution(instance *inst, solution *new_sol)
     if (new_sol->cost < inst->best_solution.cost)
     {
         inst->best_solution.cost = new_sol->cost;
-        inst->best_solution.tour = (int *)calloc(inst->nnodes, sizeof(int));
+        if (inst->best_solution.tour == NULL)
+        {
+            inst->best_solution.tour = (int *)calloc(inst->nnodes, sizeof(int));
+        }
+
         memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
-    }
-    else
-    {
-        free(new_sol->tour);
     }
 }
 

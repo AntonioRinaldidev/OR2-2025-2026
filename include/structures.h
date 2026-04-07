@@ -18,6 +18,12 @@ typedef struct
 
 typedef struct
 {
+    double xcoord;
+    double ycoord;
+} vertex;
+
+typedef struct
+{
     int nnodes;
     vertex *vertices;
     double *dists; // Flattened 2D array for distance matrix
@@ -34,11 +40,5 @@ typedef struct
     CrossoverType crossover_type;
 
 } instance;
-
-typedef struct
-{
-    double xcoord;
-    double ycoord;
-} vertex;
 
 #endif // STRUCTURES_H
