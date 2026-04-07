@@ -3,6 +3,12 @@
 
 #include <stdbool.h>
 
+typedef enum
+{
+    CROSSOVER_NAIVE = 0,
+    CROSSOVER_OX1 = 1
+} CrossoverType;
+
 typedef struct
 {
     double cost;
@@ -24,6 +30,8 @@ typedef struct
     solution best_solution;
     bool opt_applied;
     char opt_name[50];
+    bool ga_applied;
+    CrossoverType crossover_type;
 
 } instance;
 

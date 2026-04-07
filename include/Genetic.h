@@ -27,7 +27,9 @@ typedef struct
     solution *pool;
     int start_index;
     int end_index;
-} breed_args;
-void breed(const generation *gen, int *parent1, int *parent2, int *child1, int *child2);
+    int *freq;
+    int *missing;
+} crossover_args;
+void crossover(const generation *gen, int *parent1, int *parent2, int *child1, int *child2);
 void natural_selection(generation *gen, generation *new_gen);
 #endif // GENETIC_H

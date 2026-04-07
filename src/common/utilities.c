@@ -202,9 +202,11 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
     strcpy(inst->input_file, "NULL");
 
-    inst->num_threads = 0;        // Controls parallel processing (0 means automatic detection of available cores)
-    inst->nnodes = 0;             // Number of nodes for random generation
-    inst->percentage_elites = 10; // Default to 10% elites for Genetic Algorithm
+    inst->num_threads = 0;                  // Controls parallel processing (0 means automatic detection of available cores)
+    inst->nnodes = 0;                       // Number of nodes for random generation
+    inst->percentage_elites = 10;           // Default to 10% elites for Genetic Algorithm
+    inst->crossover_type = CROSSOVER_NAIVE; // Default to Naive Crossover
+    inst->ga_applied = false;               // Genetic Algorithm off by default
 
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
@@ -277,6 +279,20 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
+        // Genetic Algorithm
+        if (strcmp(argv[i], "-ga") == 0 || strcmp(argv[i], "-genetic") == 0)
+        {
+            inst->ga_applied = true;
+            continue;
+        }
+
+        // Crossover type
+        if (strcmp(argv[i], "-ox1") == 0)
+        {
+            inst->crossover_type = CROSSOVER_OX1;
+            continue;
+        }
+
         // total time limit
         if (strcmp(argv[i], "-time_limit") == 0 || strcmp(argv[i], "-time") == 0)
         {
@@ -343,7 +359,10 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
         printf("\nOPTIMIZATION HEURISTICS:\n");
         printf("  -2opt               Apply 2-opt local search heuristic\n");
+        printf("\n GENETIC ALGORITHM:\n");
+        printf("  -ga                 Enable the Genetic Algorithm metaheuristic\n");
         printf("  -elites <n>         Percentage of elites to keep in Genetic Algorithm (0-100, default: 10)\n");
+        printf("  -ox1                Use Order Crossover (OX1) instead of naive crossover in Genetic Algorithm\n");
         printf("\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
@@ -378,7 +397,17 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -2opt               : Applied\n");
         else
             printf("  -2opt               : Not applied\n");
+
+        printf(COLOR_MAGENTA "\nGENETIC ALGORITHM:\n" COLOR_RESET);
+        if (inst->ga_applied)
+            printf("  -ga                 : Applied\n");
+        else
+            printf("  -ga                 : Not applied\n");
         printf("  -elites <n>         : %d%%\n", inst->percentage_elites);
+        if (inst->crossover_type == CROSSOVER_OX1)
+            printf("  -crossover          : OX1 (Order Crossover)\n");
+        else
+            printf("  -crossover          : Naive (with repair)\n");
 
         printf("\n");
 

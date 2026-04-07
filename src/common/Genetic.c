@@ -1,9 +1,15 @@
 #include "Genetic.h"
+#include "utilities.h"
 
 // TODO: [ ] Implement the "Genetic Correction" of children that checks if the children are feasible. PS: u could also use the 2 opt to optimize them.
-void breed(const generation *gen, int *parent1, int *parent2, int *child1, int *child2)
+
+void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2)
 {
-    int nnodes = gen->inst->nnodes;
+    if (!child1)
+        return;
+    if (!child2)
+        return;
+    int nnodes = inst->nnodes;
 
     for (int i = 0; i < nnodes / 2; i++)
     {
@@ -20,14 +26,45 @@ void breed(const generation *gen, int *parent1, int *parent2, int *child1, int *
             child2[i] = parent1[i - nnodes / 2];
     }
 }
-void audit_children_and_repair(const instance *inst, int *child)
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child)
 {
     if (!child)
         return;
-    vertex *vertices = inst->vertices;
     int nnodes = inst->nnodes;
-    int *freq = (int *)calloc(nnodes, sizeof(int));
-    int *missing = (int *)calloc(nnodes, sizeof(int));
+
+    int a = rand() % nnodes;
+    int b = rand() % nnodes;
+    if (a > b)
+        swap(&a, &b);
+
+    int *in_child = (int *)calloc(nnodes, sizeof(int));
+    for (int i = a; i <= b; i++)
+    {
+        child[i] = parent1[i];
+        in_child[child[i]] = 1;
+    }
+
+    int current_p2 = (b + 1) % nnodes;
+    int current_c = (b + 1) % nnodes;
+    for (int i = 0; i < nnodes; i++)
+    {
+        int candidate = parent2[current_p2];
+        if (!in_child[candidate])
+        {
+            child[current_c] = candidate;
+            current_c = (current_c + 1) % nnodes;
+        }
+        current_p2 = (current_p2 + 1) % nnodes;
+    }
+    free(in_child);
+}
+
+void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing)
+{
+    if (!child)
+        return;
+    int nnodes = inst->nnodes;
+    memset(freq, 0, nnodes * sizeof(int));
     int missing_count = 0;
 
     for (int i = 0; i < nnodes; i++)
@@ -39,11 +76,20 @@ void audit_children_and_repair(const instance *inst, int *child)
         if (freq[i] == 0)
             missing[missing_count++] = i;
     }
+
+    int missing_index = 0;
+    for (int i = 0; i < nnodes; i++)
+    {
+        int vertex = child[i];
+        if (freq[vertex] > 1)
+            child[i] = missing[missing_index++];
+        freq[vertex]--;
+    }
 }
 
-void *breed_worker(void *args)
+void *crossover_worker(void *args)
 {
-    breed_args *arg = (breed_args *)args;
+    crossover_args *arg = (crossover_args *)args;
     const generation *gen = arg->gen;
     solution *pool = arg->pool;
 
@@ -56,17 +102,32 @@ void *breed_worker(void *args)
         int *child1 = pool[i].tour;
         int *child2 = (i + 1 < arg->end_index) ? pool[i + 1].tour : NULL;
 
-        breed(gen, gen->population[p1].tour, gen->population[p2].tour, child1, child2);
+        if (gen->inst->crossover_type == CROSSOVER_NAIVE)
+        {
+            crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1, child2);
+            if (child1)
+                audit_children_and_repair(gen->inst, child1, arg->freq, arg->missing);
+            if (child2)
+                audit_children_and_repair(gen->inst, child2, arg->freq, arg->missing);
+        }
+        else if (gen->inst->crossover_type == CROSSOVER_OX1)
+        {
+            // OX1 crossover guarantees permutation safety, so we skip the repair step.
+            // It processes one child at a time, so we alternate the parent order.
+            if (child1)
+                ox1_crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1);
+            if (child2)
+                ox1_crossover(gen->inst, gen->population[p2].tour, gen->population[p1].tour, child2);
+        }
 
         if (child1)
-
             pool[i].cost = calculate_cost(gen->inst, child1);
         if (child2)
             pool[i + 1].cost = calculate_cost(gen->inst, child2);
     }
+
     return NULL;
 }
-
 // Comparator function used by qsort to sort solutions by cost (Ascending)
 int compare_solutions(const void *a, const void *b)
 {
@@ -97,7 +158,7 @@ void natural_selection(generation *gen, generation *new_gen)
     }
 
     pthread_t *threads = malloc(num_threads * sizeof(pthread_t));
-    breed_args *args = malloc(num_threads * sizeof(breed_args));
+    crossover_args *args = malloc(num_threads * sizeof(crossover_args));
 
     int pairs_per_thread = num_pairs / num_threads;
     int remainder = num_pairs % num_threads;
@@ -117,12 +178,16 @@ void natural_selection(generation *gen, generation *new_gen)
         if (args[t].end_index > pool_size)
             args[t].end_index = pool_size;
 
-        pthread_create(&threads[t], NULL, breed_worker, &args[t]);
+        args[t].freq = (int *)malloc(gen->inst->nnodes * sizeof(int));
+        args[t].missing = (int *)malloc(gen->inst->nnodes * sizeof(int));
+        pthread_create(&threads[t], NULL, crossover_worker, &args[t]);
     }
 
     for (int t = 0; t < num_threads; t++)
     {
         pthread_join(threads[t], NULL);
+        free(args[t].freq);
+        free(args[t].missing);
     }
 
     // 3. Sort the pool from best (lowest cost) to worst
