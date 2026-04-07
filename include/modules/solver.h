@@ -1,11 +1,11 @@
 #ifndef SOLVER_H_
 #define SOLVER_H_
 #include <time.h>
-#include "structures.h"
-#include "utilities.h"
-#include "greedyNN.h"
-#include "2_opt.h"
-#include "vns.h"
+#include "core/structures.h"
+#include "core/utilities.h"
+#include "construction/greedyNN.h"
+#include "heuristics/2_opt.h"
+#include "metaheuristics/vns.h"
 
 /**
  * Iterates through every possible starting node, generates a Greedy NN tour,

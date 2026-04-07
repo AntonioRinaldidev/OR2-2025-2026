@@ -1,5 +1,5 @@
-#include "greedyNN.h"
-#include "utilities.h"
+#include "construction/greedyNN.h"
+#include "core/utilities.h"
 
 /**
  * @brief Computes a TSP tour using the Greedy Nearest Neighbor heuristic.

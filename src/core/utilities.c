@@ -1,5 +1,5 @@
 
-#include "utilities.h"
+#include "core/utilities.h"
 
 int VERBOSE = 2;
 double EPSILON = 1e-5;

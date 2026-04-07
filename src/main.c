@@ -1,5 +1,5 @@
-#include "utilities.h"
-#include "solver.h"
+#include "core/utilities.h"
+#include "modules/solver.h"
 #include <time.h>
 
 // TODO:

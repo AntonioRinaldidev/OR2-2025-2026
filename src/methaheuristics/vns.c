@@ -1,7 +1,7 @@
 
 
-#include "vns.h"
-#include "utilities.h"
+#include "metaheuristics/vns.h"
+#include "core/utilities.h"
 
 /**
  * @brief Generates three unique and sorted random indices within the tour.

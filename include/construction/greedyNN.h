@@ -1,6 +1,6 @@
 #ifndef GREEDYNN_H
 #define GREEDYNN_H
-#include "utilities.h"
+#include "core/utilities.h"
 
 void greedyNN(instance *inst, solution *sol, int start_node);
 

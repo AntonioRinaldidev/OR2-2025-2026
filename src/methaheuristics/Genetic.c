@@ -1,5 +1,5 @@
-#include "Genetic.h"
-#include "utilities.h"
+#include "metaheuristics/genetic.h"
+#include "core/utilities.h"
 
 // TODO: [ ] Implement the "Genetic Correction" of children that checks if the children are feasible. PS: u could also use the 2 opt to optimize them.
 

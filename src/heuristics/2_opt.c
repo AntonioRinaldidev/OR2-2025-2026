@@ -1,5 +1,5 @@
-#include "2_opt.h"
-#include "structures.h"
+#include "heuristics/2_opt.h"
+#include "core/structures.h"
 
 double find_best_two_opt(instance *inst, solution *sol, int *pa, int *pb)
 {

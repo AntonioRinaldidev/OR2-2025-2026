@@ -1,6 +1,6 @@
 #ifndef GENETIC_H
 #define GENETIC_H
-#include "structures.h"
+#include "core/structures.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <stddef.h>

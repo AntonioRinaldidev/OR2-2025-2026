@@ -1,4 +1,4 @@
-#include "solver.h"
+#include "modules/solver.h"
 
 void apply_2opt_local_search(instance *inst, solution *sol, clock_t start_time)
 {
