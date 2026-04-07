@@ -31,7 +31,7 @@ void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child,
     if (!child)
         return;
     int nnodes = inst->nnodes;
-
+    memset(visited_nodes, 0, nnodes * sizeof(int));
     int a = rand() % nnodes;
     int b = rand() % nnodes;
     if (a > b)
