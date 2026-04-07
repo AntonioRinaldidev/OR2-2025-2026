@@ -42,6 +42,7 @@ void parse_instance(instance *inst);
 void parse_command_line(int argc, char **argv, instance *inst);
 void swap(int *a, int *b);
 void update_best_solution(instance *inst, solution *new_sol);
+bool timelimit_check(instance *inst, clock_t start_time);
 // TODO: Add function that returns a random number between 0 and 1.
 
 // --- TSP UTILITY FUNCTIONS ---
@@ -51,6 +52,7 @@ void compute_distances(instance *inst);
 double calculate_cost(instance *inst, int *tour);
 void plot_tour(instance *inst, int *tour, char *title);
 int parse_tour(instance *inst, int *tour);
+void generate_random_tour(instance *inst, int *tour);
 
 static inline double dist(int i, int j, instance *inst)
 {

@@ -415,7 +415,20 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf(COLOR_RESET);
     }
 }
+bool timelimit_check(instance *inst, clock_t start_time)
+{
+    if (((double)(clock() - start_time) / CLOCKS_PER_SEC) > inst->timelimit)
+    {
 
+        if (!inst->timelimit_reached)
+        {
+            printf(COLOR_YELLOW "[WARNING]" COLOR_RESET " Time limit reached. Cleaning up and exiting...\n");
+            inst->timelimit_reached = true;
+        }
+        return true;
+    }
+    return false;
+}
 // --- TSP UTILITY FUNCTIONS ---
 /**
  * Prints the sequence of a given tour to stdout.
@@ -666,6 +679,24 @@ int parse_tour(instance *inst, int *tour)
  * @param seed Random seed for reproducibility.
  * @return A fully initialized instance structure with random coordinates. No filename is associated with it.
  */
+
+/**
+ * Generates a random TSP tour based on the instance structure.
+ * @param inst Pointer to the instance structure containing the problem dimension.
+ * @param tour Pre-allocated array to be filled with the random 0-based node sequence.
+ */
+void generate_random_tour(instance *inst, int *tour)
+{
+    for (int i = 0; i < inst->nnodes; i++)
+    {
+        tour[i] = i;
+    }
+    for (int i = inst->nnodes - 1; i > 0; i--)
+    {
+        int j = rand() % (i + 1);
+        swap(&tour[i], &tour[j]);
+    }
+}
 
 // --- INSTANCES RANDOM GENERATOR ---
 instance generate_random_instance(int nnodes, double x_max, double y_max, int seed)
