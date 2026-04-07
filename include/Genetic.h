@@ -30,6 +30,10 @@ typedef struct
     int *freq;
     int *missing;
 } crossover_args;
-void crossover(const generation *gen, int *parent1, int *parent2, int *child1, int *child2);
+void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2);
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child);
+void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing);
+void *crossover_worker(void *args);
+int compare_solutions(const void *a, const void *b);
 void natural_selection(generation *gen, generation *new_gen);
 #endif // GENETIC_H
