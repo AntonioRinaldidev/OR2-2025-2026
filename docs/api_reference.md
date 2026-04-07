@@ -5,7 +5,7 @@ This document provides a detailed reference for the functions implemented in the
 ---
 
 ## 1. Core Logic
-**File:** `src/vrp/main.c`
+**File:** `src/main.c`
 
 ### `int main(int argc, char **argv)`
 The main entry point for the TSP/VRP solver.
@@ -54,6 +54,9 @@ Parses command-line arguments to configure solver settings.
   - `-node_number <n>`: Number of nodes for random generation.
   - `-verbose <n>`: Verbosity level (0-5).
   - `-time_limit <s>` or `-time <s>`: Execution time limit in seconds.
+  - `-ga` or `-genetic`: Enables the Genetic Algorithm metaheuristic.
+  - `-elites <n>`: Percentage of elites to keep in Genetic Algorithm (0-100).
+  - `-ox1`: Use Order Crossover (OX1) instead of naive crossover.
 
 ### `void parse_instance(instance *inst)`
 Parses the input file (TSPLIB format) to populate the instance structure.
@@ -114,13 +117,29 @@ Calculates the **Squared Euclidean distance** between node `i` and node `j`.
 
 ---
 
-## 5. Data Structures
+## 5. Genetic & VNS Modules (Newly Added)
+
+### Genetic Algorithm (`src/common/Genetic.c`)
+- `crossover` & `ox1_crossover`: Performs generation of children from parents using either a naive split (with repair) or Order Crossover logic.
+- `audit_children_and_repair`: Validates and corrects naive crossover children by filling in dropped/duplicate nodes.
+- `crossover_worker`: Thread-safe worker to handle parallel crossover and cost calculations.
+- `natural_selection`: Manages Elitism (carrying over champions and top X% elites) and random selection for the population lifecycle.
+
+### Variable Neighborhood Search (`src/common/vns.c`)
+- `apply_3_opt_kick`: Performs a pure non-reversing 3-opt block swap (A -> C -> B -> D).
+- `apply_3_opt_kick_reversing`: Performs a reversing 3-opt kick.
+- `apply_random_3_opt_kick`: A utility that picks randomly among 7 valid 3-opt combinations to heavily disrupt the solution sequence.
+
+---
+
+## 6. Data Structures
 
 ### `instance`
 - `nnodes`: Number of nodes.
 - `vertices`: Array of `vertex` structures storing coordinates.
 - `dists`: Flattened distance matrix.
 - `timelimit`, `randomseed`, `num_threads`: Configuration parameters.
+- **Update**: Includes parameters for Meta-heuristics (`ga_applied`, `crossover_type`, `percentage_elites`).
 
 ### `solution`
 - `tour`: Array of node indices representing the path.
@@ -128,7 +147,7 @@ Calculates the **Squared Euclidean distance** between node `i` and node `j`.
 
 ---
 
-## 6. Recent Additions
+## 7. Recent Additions
 
 ### `double calculate_cost(instance *inst, int *tour)`
 Calculates the total Euclidean cost of a tour.

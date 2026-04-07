@@ -10,17 +10,17 @@ The main functions driving this process reside in `src/common/Genetic.c`.
 
 ---
 
-## 2. Functions & Responsibilities
+## 2. Functions & Responsibilities (Updated)
 
-### `breed`
-**Purpose:** Acts as the crossover operator. It takes two parent tours and generates two "specular" (mirrored) children.
-* **Current Logic:** It splits the parents exactly in half. `child1` gets the first half of `parent1` and the second half of `parent2`. `child2` gets the inverse.
-* *(Note: For the Traveling Salesman Problem, this naive split generates invalid tours. Future iterations will replace this with permutation-safe algorithms like Order Crossover (OX1)).*
+### `crossover` & `ox1_crossover` (Formerly `breed`)
+**Purpose:** Acts as the crossover operator. It takes two parent tours and generates two children.
+* **Update from Previous Version:** The original `breed` function generated mathematically invalid TSP tours. This has been updated: `crossover` now uses a naive split accompanied by an `audit_children_and_repair` function to fix duplicate/missing cities. Additionally, an advanced `ox1_crossover` (Order Crossover) has been implemented to natively guarantee permutation safety.
 
-### `breed_worker`
+### `crossover_worker` (Formerly `breed_worker`)
 **Purpose:** The thread-safe worker function that parallelizes the generation of new children.
 * **Chunking:** Instead of using mutex locks (which are slow), each thread is assigned a specific `start_index` and `end_index`. It only writes into its exclusively owned block of the temporary pool array.
 * **Parent Selection:** The loop advances by 2 (since every pairing produces 2 children). It sequentializes parent pairings using modulo arithmetic (`i / 2`) to ensure valid parent indices.
+* **Update:** Thread workloads now dynamically switch between Naive crossover (with repair) and OX1 crossover based on the user's `inst->crossover_type` configuration.
 * **Thread-Safe Evaluation:** After calling `breed`, the worker immediately calculates the geometric cost of the newly generated children. Since `calculate_cost` only reads from the read-only `instance` structure, this $O(N)$ operation runs concurrently across all threads with zero race conditions.
 
 ### `compare_solutions`
@@ -40,7 +40,7 @@ The `natural_selection` function implements a highly robust evolutionary strateg
 Instead of generating exactly `N` children for a population of size `N`, the algorithm allocates a temporary pool of size `2 * N`. This allows the algorithm to explore a wider genetic neighborhood before deciding who survives.
 
 #### Step 2: Parallel Breeding
-The `2 * N` generation workload is divided evenly among the available CPU threads. The threads execute `breed_worker`, populating the temporary pool and evaluating the fitness (cost) of every single child.
+The `2 * N` generation workload is divided evenly among the available CPU threads. The threads execute `crossover_worker`, populating the temporary pool and evaluating the fitness (cost) of every single child.
 
 #### Step 3: Sorting
 Once all threads are joined and the pool is fully populated and evaluated, `qsort` is applied to rank all `2 * N` children from best (lowest cost) to worst.
@@ -60,6 +60,5 @@ The temporary pool of `2 * N` children is safely destroyed, preventing memory le
 ---
 
 ## 4. Future Improvements Planned
-1. **Order Crossover (OX1):** Upgrade the `breed` function to generate mathematically valid TSP tours without duplicating or dropping cities.
-2. **Tournament Selection:** Replace the sequential parent selection (`parent[i]` mating with `parent[i+1]`) with a tournament model that favors fitter parents.
-3. **Mutation / Kicks:** Introduce a small probability for children to undergo a random mutation (like a 2-opt or 3-opt kick) to further explore the solution space.
+1. **Tournament Selection:** Replace the sequential parent selection (`parent[i]` mating with `parent[i+1]`) with a tournament model that favors fitter parents.
+2. **Mutation / Kicks:** Introduce a small probability for children to undergo a random mutation (like a 2-opt or 3-opt kick) to further explore the solution space.

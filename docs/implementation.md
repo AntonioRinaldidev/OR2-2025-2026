@@ -6,7 +6,7 @@ This document outlines the technical implementation of the Traveling Salesman Pr
 
 The project is structured into three main components:
 
-1.  **Core Logic (`src/vrp/main.c`)**: Orchestrates the program flow, handles command-line arguments, and manages the multi-start heuristic loop.
+1.  **Core Logic (`src/main.c`)**: Orchestrates the program flow, handles command-line arguments, and manages the execution of heuristics and meta-heuristics.
 2.  **Heuristics (`src/greedyNN.c`)**: Contains the implementation of the Greedy Nearest Neighbor algorithm.
 3.  **Utilities (`src/common/utilities.c`)**: Handles input parsing (TSPLIB format), memory management, distance calculations, and visualization.
 
@@ -31,7 +31,7 @@ Represents a specific tour found by an algorithm.
 
 ### Multi-Start Greedy Nearest Neighbor (NN)
 
-The solver currently employs a **Multi-Start Greedy Heuristic** to construct a feasible solution.
+The solver currently employs a **Multi-Start Greedy Heuristic** to construct an initial feasible solution.
 
 #### Logic
 1.  **Initialization**: The algorithm selects a starting node $S$.
@@ -44,6 +44,12 @@ Instead of running the Greedy NN once (which is sensitive to the starting positi
 - It generates $N$ different tours.
 - It retains the tour with the lowest total cost.
 - **Complexity**: $O(N^3)$ (since Greedy NN is $O(N^2)$ and runs $N$ times).
+
+### Meta-Heuristics (Update)
+Following the initial construction, the solver now implements advanced meta-heuristics to escape local optima:
+1. **2-Opt Local Search**: Iteratively untangles crossed edges to locally optimize the tour.
+2. **Variable Neighborhood Search (VNS)**: Applies random 3-opt kicks (block swaps) to perturb the solution and escape deep local minima, followed by 2-opt.
+3. **Genetic Algorithm (GA)**: Maintains a population of solutions, using crossover (Naive with repair, or Order Crossover OX1) and elitism to iteratively evolve better tours.
 
 ---
 
