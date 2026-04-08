@@ -116,11 +116,16 @@ void *crossover_worker(void *args)
         }
 
         if (child1)
+        {
             pool[i].cost = calculate_cost(gen->inst, child1);
-        apply_2opt_local_search(gen->inst, &pool[i], gen->inst->start_time);
+            apply_2opt_local_search(gen->inst, &pool[i], gen->inst->start_time);
+        }
+
         if (child2)
+        {
             pool[i + 1].cost = calculate_cost(gen->inst, child2);
-        apply_2opt_local_search(gen->inst, &pool[i + 1], gen->inst->start_time);
+            apply_2opt_local_search(gen->inst, &pool[i + 1], gen->inst->start_time);
+        }
     }
 
     return NULL;
@@ -151,7 +156,7 @@ void natural_selection(generation *gen, generation *new_gen)
     for (int i = 0; i < pool_size; i++)
     {
         pool[i].tour = malloc(gen->inst->nnodes * sizeof(int));
-        pool[i].cost = 0.0;
+        pool[i].cost = INF;
     }
 
     pthread_t *threads = malloc(num_threads * sizeof(pthread_t));
@@ -292,10 +297,11 @@ void run_genetic_algorithm(instance *inst)
 
         if (next_gen->champion->cost < best_cost_ever - EPSILON)
         {
+            update_best_solution(inst, next_gen->champion);
             best_cost_ever = next_gen->champion->cost;
             if (VERBOSE >= 1)
             {
-                printf(COLOR_CYAN "[GEN %d]" COLOR_RESET " New Global Best: " COLOR_GREEN "%.2f" COLOR_RESET "\n", g, best_cost_ever);
+                printf(COLOR_CYAN "[GEN %d]" COLOR_RESET " New Global Best: " COLOR_GREEN "%.2f" COLOR_RESET "\n", g, next_gen->champion->cost);
             }
         }
 

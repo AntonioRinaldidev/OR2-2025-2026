@@ -234,7 +234,6 @@ void update_best_solution(instance *inst, solution *new_sol)
     if (new_sol->cost < 1.0)
         return;
     // 1. Thread safety is non-negotiable for live plotting
-    pthread_mutex_lock(&inst->plot_mutex);
 
     if (new_sol->cost < inst->best_solution.cost - EPSILON)
     {
@@ -243,7 +242,7 @@ void update_best_solution(instance *inst, solution *new_sol)
         // Update the internal best tour
         if (inst->best_solution.tour == NULL)
         {
-            inst->best_solution.tour = (int *)calloc(inst->nnodes, sizeof(int));
+            inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
         }
         memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
 
@@ -269,7 +268,6 @@ void update_best_solution(instance *inst, solution *new_sol)
         }
     }
 
-    pthread_mutex_unlock(&inst->plot_mutex);
 } /**
    * Parses command-line arguments to configure solver settings (file, time limit, threads, etc.).
    * Displays the help menu if arguments are missing or help is requested.
@@ -803,26 +801,16 @@ void generate_random_tour(instance *inst, int *tour)
 }
 
 // --- INSTANCES RANDOM GENERATOR ---
-instance generate_random_instance(int nnodes, double x_max, double y_max, int seed)
+void generate_random_instance(instance *inst, double x_max, double y_max)
 {
-    instance inst;
-    memset(&inst, 0, sizeof(instance));
 
-    inst.nnodes = nnodes;
-    inst.randomseed = seed;
-    inst.timelimit = CPX_INFBOUND; // Default to infinite time
-    inst.num_threads = 0;          // Default to auto
-    inst.percentage_elites = 10;
+    inst->vertices = (vertex *)calloc(inst->nnodes, sizeof(vertex));
 
-    inst.vertices = (vertex *)calloc(nnodes, sizeof(vertex));
+    srand(inst->randomseed);
 
-    srand(seed);
-
-    for (int i = 0; i < nnodes; i++)
+    for (int i = 0; i < inst->nnodes; i++)
     {
-        inst.vertices[i].xcoord = ((double)rand() / RAND_MAX) * x_max;
-        inst.vertices[i].ycoord = ((double)rand() / RAND_MAX) * y_max;
+        inst->vertices[i].xcoord = ((double)rand() / RAND_MAX) * x_max;
+        inst->vertices[i].ycoord = ((double)rand() / RAND_MAX) * y_max;
     }
-
-    return inst;
 }

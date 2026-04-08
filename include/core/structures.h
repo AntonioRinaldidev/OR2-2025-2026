@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
-#include <pthread.h>
 
 typedef struct
 {
@@ -37,7 +36,6 @@ typedef struct
     double start_time;
     char input_file[1000];
     FILE *gnuplot_pipe;
-    pthread_mutex_t plot_mutex;
 
     int num_threads;
 

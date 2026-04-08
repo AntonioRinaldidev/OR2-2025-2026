@@ -79,5 +79,5 @@ static inline double dist_sq(int i, int j, instance *inst)
 // --- END TSP UTILITY FUNCTIONS ---
 
 // --- INSTANCES RANDOM GENERATOR ---
-instance generate_random_instance(int nnodes, double x_max, double y_max, int seed);
+void generate_random_instance(instance *inst, double x_max, double y_max);
 #endif

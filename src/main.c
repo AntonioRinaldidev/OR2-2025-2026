@@ -25,7 +25,6 @@ int main(int argc, char **argv)
     double start_time = get_wall_time();
     // Initialize everything to 0/NULL safely
     instance inst = {0};
-    pthread_mutex_init(&inst.plot_mutex, NULL);
 
     parse_command_line(argc, argv, &inst);
 
@@ -35,27 +34,15 @@ int main(int argc, char **argv)
     }
     else if (inst.nnodes > 0)
     {
-        // Capture user preferences before they are overwritten
-        double saved_timelimit = inst.timelimit;
-        int saved_threads = inst.num_threads;
-        int saved_seed = inst.randomseed;
-        int saved_opt_applied = inst.opt_applied;
-        char saved_opt_name[50];
-        strcpy(saved_opt_name, inst.opt_name);
 
-        inst = generate_random_instance(inst.nnodes, 1000.0, 1000.0, saved_seed);
-
-        // Restore user preferences
-        inst.timelimit = saved_timelimit;
-        inst.num_threads = saved_threads;
-        inst.opt_applied = saved_opt_applied;
-        strcpy(inst.opt_name, saved_opt_name);
+        generate_random_instance(&inst, 1000.0, 1000.0);
     }
 
     compute_distances(&inst);
 
     if (inst.nnodes > 0)
     {
+
         open_gnuplot(&inst);
 
         // --- SOLVER ---
@@ -66,6 +53,7 @@ int main(int argc, char **argv)
 
         if (inst.ga_applied)
         {
+            printf("\n" COLOR_CYAN "[GA-INIT] Finding initial Champion...\n" COLOR_RESET);
             // The GA handles its own initialization (seeding with VNS) and evolution
             run_genetic_algorithm(&inst);
         }
@@ -127,7 +115,7 @@ int main(int argc, char **argv)
     printf("Press Enter to exit...");
     getchar();
     close_gnuplot(&inst);
-    pthread_mutex_destroy(&inst.plot_mutex); // CLEANUP HERE
+
     free_instance(&inst);
 
     return 0;

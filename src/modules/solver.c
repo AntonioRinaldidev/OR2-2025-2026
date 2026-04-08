@@ -131,11 +131,6 @@ void solve_tsp(instance *inst, double start_time)
 
         if (current_sol.cost < inst->best_solution.cost - EPSILON)
         {
-            inst->best_solution.cost = current_sol.cost;
-            if (inst->best_solution.tour == NULL)
-            {
-                inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
-            }
             update_best_solution(inst, &current_sol);
 
             if (VERBOSE >= 1)
