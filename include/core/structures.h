@@ -1,7 +1,9 @@
 #ifndef STRUCTURES_H
 #define STRUCTURES_H
-
+#include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
+#include <pthread.h>
 
 typedef struct
 {
@@ -32,7 +34,10 @@ typedef struct
 
     double timelimit;
     bool timelimit_reached;
+    double start_time;
     char input_file[1000];
+    FILE *gnuplot_pipe;
+    pthread_mutex_t plot_mutex;
 
     int num_threads;
 
@@ -42,6 +47,7 @@ typedef struct
     char opt_name[50];
 
     bool ga_applied;
+    int population_size;
     CrossoverType crossover_type;
     int percentage_elites;
 

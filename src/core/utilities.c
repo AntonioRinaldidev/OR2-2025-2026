@@ -1,5 +1,6 @@
 
 #include "core/utilities.h"
+#include <sys/time.h>
 
 int VERBOSE = 2;
 double EPSILON = 1e-5;
@@ -17,8 +18,62 @@ void free_instance(instance *inst)
         free(inst->best_solution.tour);
     if (inst->dists)
         free(inst->dists);
+
+    // Close the live window if it's open
+    if (inst->gnuplot_pipe)
+        pclose(inst->gnuplot_pipe);
 }
 
+void open_gnuplot(instance *inst)
+{
+    // Use the Homebrew path we found earlier
+    inst->gnuplot_pipe = popen("/opt/homebrew/bin/gnuplot -persist", "w");
+    if (!inst->gnuplot_pipe)
+        return;
+
+    // 1. Setup the terminal
+    fprintf(inst->gnuplot_pipe, "set term qt noraise title 'TSP Live Solver - %s'\n", inst->input_file);
+    fprintf(inst->gnuplot_pipe, "set grid\n");
+
+    // 2. FORCE THE WINDOW OPEN: Plot only the points (nodes)
+    // We do this before the solver starts so you see the "Star Map"
+    fprintf(inst->gnuplot_pipe, "plot '-' with points pt 7 ps 0.4 lc rgb 'red' title 'Nodes'\n");
+    for (int i = 0; i < inst->nnodes; i++)
+    {
+        fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[i].xcoord, inst->vertices[i].ycoord);
+    }
+    fprintf(inst->gnuplot_pipe, "e\n");
+
+    // 3. Flush to ensure the window pops up NOW
+    fflush(inst->gnuplot_pipe);
+}
+
+void refresh_gnuplot(instance *inst)
+{
+    if (!inst->gnuplot_pipe || !inst->best_solution.tour)
+        return;
+
+    fprintf(inst->gnuplot_pipe, "set title 'Best Cost: %.2f'\n", inst->best_solution.cost);
+    fprintf(inst->gnuplot_pipe, "plot '-' with linespoints pt 7 ps 0.5 lc rgb 'blue' title 'Current Best'\n");
+
+    for (int i = 0; i < inst->nnodes; i++)
+    {
+        int node = inst->best_solution.tour[i];
+        fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[node].xcoord, inst->vertices[node].ycoord);
+    }
+    // Close the loop
+    int start_node = inst->best_solution.tour[0];
+    fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[start_node].xcoord, inst->vertices[start_node].ycoord);
+    fprintf(inst->gnuplot_pipe, "e\n");
+    fflush(inst->gnuplot_pipe); // Force the draw
+}
+void close_gnuplot(instance *inst)
+{
+    if (inst->gnuplot_pipe)
+    {
+        pclose(inst->gnuplot_pipe);
+    }
+}
 /**
  * Prints an error message in red to stdout and terminates the program.
  * @param err The error message string.
@@ -176,23 +231,50 @@ void swap(int *a, int *b)
 
 void update_best_solution(instance *inst, solution *new_sol)
 {
-    if (new_sol->cost < inst->best_solution.cost)
+    if (new_sol->cost < 1.0)
+        return;
+    // 1. Thread safety is non-negotiable for live plotting
+    pthread_mutex_lock(&inst->plot_mutex);
+
+    if (new_sol->cost < inst->best_solution.cost - EPSILON)
     {
         inst->best_solution.cost = new_sol->cost;
+
+        // Update the internal best tour
         if (inst->best_solution.tour == NULL)
         {
             inst->best_solution.tour = (int *)calloc(inst->nnodes, sizeof(int));
         }
-
         memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
-    }
-}
 
-/**
- * Parses command-line arguments to configure solver settings (file, time limit, threads, etc.).
- * Displays the help menu if arguments are missing or help is requested.
- * @param inst Pointer to the instance structure.
- */
+        // 2. The Live Plotting Magic
+        if (inst->gnuplot_pipe)
+        {
+            // Tell gnuplot we are sending a NEW plot
+            fprintf(inst->gnuplot_pipe, "set title 'TSP Best Cost: %.2f'\n", inst->best_solution.cost);
+            fprintf(inst->gnuplot_pipe, "plot '-' with linespoints pt 7 ps 0.5 lc rgb 'blue' title 'Current Best'\n");
+
+            for (int i = 0; i < inst->nnodes; i++)
+            {
+                int node = inst->best_solution.tour[i];
+                fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[node].xcoord, inst->vertices[node].ycoord);
+            }
+            // Close the loop
+            fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[inst->best_solution.tour[0]].xcoord, inst->vertices[inst->best_solution.tour[0]].ycoord);
+
+            fprintf(inst->gnuplot_pipe, "e\n"); // End of data for THIS plot
+
+            // 3. FORCE the data through the pipe
+            fflush(inst->gnuplot_pipe);
+        }
+    }
+
+    pthread_mutex_unlock(&inst->plot_mutex);
+} /**
+   * Parses command-line arguments to configure solver settings (file, time limit, threads, etc.).
+   * Displays the help menu if arguments are missing or help is requested.
+   * @param inst Pointer to the instance structure.
+   */
 void parse_command_line(int argc, char **argv, instance *inst)
 {
     if (VERBOSE >= 4) // Level 4 for debugging arguments
@@ -207,7 +289,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->percentage_elites = 10;           // Default to 10% elites for Genetic Algorithm
     inst->crossover_type = CROSSOVER_NAIVE; // Default to Naive Crossover
     inst->ga_applied = false;               // Genetic Algorithm off by default
-
+    inst->population_size = 100;
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
     inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
@@ -283,6 +365,15 @@ void parse_command_line(int argc, char **argv, instance *inst)
         if (strcmp(argv[i], "-ga") == 0 || strcmp(argv[i], "-genetic") == 0)
         {
             inst->ga_applied = true;
+            continue;
+        }
+        if (strcmp(argv[i], "-pop") == 0 || strcmp(argv[i], "-population") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value after -pop");
+            inst->population_size = atoi(argv[++i]);
+            if (inst->population_size <= 0)
+                print_error(" population size must be a positive integer");
             continue;
         }
 
@@ -400,14 +491,17 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
         printf(COLOR_MAGENTA "\nGENETIC ALGORITHM:\n" COLOR_RESET);
         if (inst->ga_applied)
+        {
             printf("  -ga                 : Applied\n");
+            printf("  -population         : %d\n", inst->population_size);
+            printf("  -elites <n>         : %d%%\n", inst->percentage_elites);
+            if (inst->crossover_type == CROSSOVER_OX1)
+                printf("  -crossover          : OX1 (Order Crossover)\n");
+            else
+                printf("  -crossover          : Naive (with repair)\n");
+        }
         else
             printf("  -ga                 : Not applied\n");
-        printf("  -elites <n>         : %d%%\n", inst->percentage_elites);
-        if (inst->crossover_type == CROSSOVER_OX1)
-            printf("  -crossover          : OX1 (Order Crossover)\n");
-        else
-            printf("  -crossover          : Naive (with repair)\n");
 
         printf("\n");
 
@@ -415,19 +509,29 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf(COLOR_RESET);
     }
 }
-bool timelimit_check(instance *inst, clock_t start_time)
+bool timelimit_check(instance *inst, double start_time)
 {
-    if (((double)(clock() - start_time) / CLOCKS_PER_SEC) > inst->timelimit)
+    if ((get_wall_time() - start_time) > inst->timelimit)
     {
-
         if (!inst->timelimit_reached)
         {
-            printf(COLOR_YELLOW "[WARNING]" COLOR_RESET " Time limit reached. Cleaning up and exiting...\n");
+            printf(COLOR_YELLOW "[WARNING]" COLOR_RESET " Real-world time limit reached!\n");
             inst->timelimit_reached = true;
         }
         return true;
     }
     return false;
+}
+
+double get_wall_time()
+{
+    struct timeval time;
+    if (gettimeofday(&time, NULL))
+    {
+        return 0; // Handle error
+    }
+    // Convert seconds and microseconds to a single double
+    return (double)time.tv_sec + (double)time.tv_usec * .000001;
 }
 // --- TSP UTILITY FUNCTIONS ---
 /**
@@ -584,7 +688,7 @@ void plot_tour(instance *inst, int *tour, char *title) // Function to generate a
     fprintf(gnuplotPipe, "set terminal pngcairo size 800,600\n");
     fprintf(gnuplotPipe, "set output 'tour_plot_%s.png'\n", title); // Save with a name based on the input file
 
-    fprintf(gnuplotPipe, "set title 'TSP Tour'\n");
+    fprintf(gnuplotPipe, "set title 'TSP Tour - Cost: %.2lf'\n", inst->best_solution.cost);
     fprintf(gnuplotPipe, "set key off\n");
     fprintf(gnuplotPipe, "plot '-' with linespoints pt 7 lc rgb 'blue'\n");
 

@@ -1,6 +1,11 @@
 #ifndef GENETIC_H
 #define GENETIC_H
 #include "core/structures.h"
+#include "core/utilities.h"
+#include "construction/greedyNN.h"
+#include "heuristics/2_opt.h"
+#include "modules/solver.h"
+#include <time.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -31,10 +36,25 @@ typedef struct
     int *missing;
     int *visited_nodes;
 } crossover_args;
+
+typedef struct
+{
+    int population_size;
+    int generations;
+    double mutation_rate;
+    double crossover_rate;
+    int elitism_count; // How many top solutions to keep automatically
+    // bool use_2opt;     // Toggle for the memetic refinement
+} GA_Params;
 void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2);
 void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes);
 void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing);
 void *crossover_worker(void *args);
 int compare_solutions(const void *a, const void *b);
 void natural_selection(generation *gen, generation *new_gen);
+
+void initilize_generation(generation *gen, double start_time);
+void run_genetic_algorithm(instance *inst);
+generation *create_generation(instance *inst, int pop_size);
+void free_generation(generation *gen);
 #endif // GENETIC_H

@@ -1,6 +1,6 @@
 #include "modules/solver.h"
 
-void apply_2opt_local_search(instance *inst, solution *sol, clock_t start_time)
+void apply_2opt_local_search(instance *inst, solution *sol, double start_time)
 {
     int pa, pb;
     double best_cost_diff;
@@ -30,7 +30,7 @@ void apply_2opt_local_search(instance *inst, solution *sol, clock_t start_time)
  * @param sol Pointer to the solution to be refined.
  * @param start_time The starting time of the refinement process (in seconds).
  */
-void refine_solution(instance *inst, solution *sol, clock_t start_time)
+void refine_solution(instance *inst, solution *sol, double start_time)
 {
     if (!inst->opt_applied)
         return;
@@ -106,7 +106,7 @@ void refine_solution(instance *inst, solution *sol, clock_t start_time)
  * @param inst A pointer to the instance structure.
  * @param start_time The starting time of the solver.
  */
-void solve_tsp(instance *inst, clock_t start_time)
+void solve_tsp(instance *inst, double start_time)
 {
     solution current_sol;
     current_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
@@ -136,7 +136,7 @@ void solve_tsp(instance *inst, clock_t start_time)
             {
                 inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
             }
-            memcpy(inst->best_solution.tour, current_sol.tour, inst->nnodes * sizeof(int));
+            update_best_solution(inst, &current_sol);
 
             if (VERBOSE >= 1)
             {

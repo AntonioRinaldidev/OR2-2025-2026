@@ -22,9 +22,10 @@ int main(int argc, char **argv)
 
 {
 
-    clock_t start_time = clock();
+    double start_time = get_wall_time();
     // Initialize everything to 0/NULL safely
     instance inst = {0};
+    pthread_mutex_init(&inst.plot_mutex, NULL);
 
     parse_command_line(argc, argv, &inst);
 
@@ -55,12 +56,24 @@ int main(int argc, char **argv)
 
     if (inst.nnodes > 0)
     {
+        open_gnuplot(&inst);
 
         // --- SOLVER ---
         inst.best_solution.tour = NULL;
         inst.best_solution.cost = INF;
 
-        solve_tsp(&inst, start_time);
+        inst.start_time = start_time;
+
+        if (inst.ga_applied)
+        {
+            // The GA handles its own initialization (seeding with VNS) and evolution
+            run_genetic_algorithm(&inst);
+        }
+        else
+        {
+            // Standard multi-start Greedy + VNS approach
+            solve_tsp(&inst, start_time);
+        }
 
         // --- OPTIMAL TOUR CHECK ---
         double optimal_cost = INF;
@@ -111,7 +124,11 @@ int main(int argc, char **argv)
         }
     }
     // --------------------------------
-
+    printf("Press Enter to exit...");
+    getchar();
+    close_gnuplot(&inst);
+    pthread_mutex_destroy(&inst.plot_mutex); // CLEANUP HERE
     free_instance(&inst);
+
     return 0;
 }

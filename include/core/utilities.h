@@ -42,7 +42,11 @@ void parse_instance(instance *inst);
 void parse_command_line(int argc, char **argv, instance *inst);
 void swap(int *a, int *b);
 void update_best_solution(instance *inst, solution *new_sol);
-bool timelimit_check(instance *inst, clock_t start_time);
+bool timelimit_check(instance *inst, double start_time);
+double get_wall_time();
+void open_gnuplot(instance *inst);
+void refresh_gnuplot(instance *inst);
+void close_gnuplot(instance *inst);
 // TODO: Add function that returns a random number between 0 and 1.
 
 // --- TSP UTILITY FUNCTIONS ---

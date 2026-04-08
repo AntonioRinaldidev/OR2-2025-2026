@@ -1,7 +1,4 @@
 #include "metaheuristics/genetic.h"
-#include "core/utilities.h"
-
-// TODO: [ ] Implement the "Genetic Correction" of children that checks if the children are feasible. PS: u could also use the 2 opt to optimize them.
 
 void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2)
 {
@@ -120,8 +117,10 @@ void *crossover_worker(void *args)
 
         if (child1)
             pool[i].cost = calculate_cost(gen->inst, child1);
+        apply_2opt_local_search(gen->inst, &pool[i], gen->inst->start_time);
         if (child2)
             pool[i + 1].cost = calculate_cost(gen->inst, child2);
+        apply_2opt_local_search(gen->inst, &pool[i + 1], gen->inst->start_time);
     }
 
     return NULL;
@@ -237,4 +236,131 @@ void natural_selection(generation *gen, generation *new_gen)
     free(pool);
     free(threads);
     free(args);
+}
+
+void initialize_generation(generation *gen)
+{
+    if (VERBOSE >= 1)
+        printf(COLOR_CYAN "[GA-INIT] Finding initial Champion...\n" COLOR_RESET);
+    int nnodes = gen->inst->nnodes;
+    solve_tsp(gen->inst, gen->inst->start_time);
+    if (gen->inst->best_solution.tour != NULL)
+    {
+        memcpy(gen->population[0].tour, gen->inst->best_solution.tour, nnodes * sizeof(int));
+        gen->population[0].cost = gen->inst->best_solution.cost;
+    }
+    else
+    {
+
+        generate_random_tour(gen->inst, gen->population[0].tour);
+        gen->population[0].cost = calculate_cost(gen->inst, gen->population[0].tour);
+    }
+
+    gen->champion = &gen->population[0];
+    if (VERBOSE >= 2)
+        printf("[GA-INIT] Shuffling %d drones...\n", gen->population_size - 1);
+
+    for (int i = 1; i < gen->population_size; i++)
+    {
+        generate_random_tour(gen->inst, gen->population[i].tour);
+        gen->population[i].cost = calculate_cost(gen->inst, gen->population[i].tour);
+
+        // In the unlikely case a random tour is better than the champion, update pointer
+        if (gen->population[i].cost < gen->champion->cost)
+        {
+            gen->champion = &gen->population[i];
+        }
+    }
+}
+
+void run_genetic_algorithm(instance *inst)
+{
+    generation *current_gen = create_generation(inst, inst->population_size);
+    generation *next_gen = create_generation(inst, inst->population_size);
+
+    initialize_generation(current_gen);
+
+    double best_cost_ever = current_gen->champion->cost;
+    int g = 0; // Generation counter for logging
+
+    // The loop now runs until the clock runs out
+    while (!timelimit_check(inst, inst->start_time))
+    {
+        g++;
+
+        natural_selection(current_gen, next_gen);
+
+        if (next_gen->champion->cost < best_cost_ever - EPSILON)
+        {
+            best_cost_ever = next_gen->champion->cost;
+            if (VERBOSE >= 1)
+            {
+                printf(COLOR_CYAN "[GEN %d]" COLOR_RESET " New Global Best: " COLOR_GREEN "%.2f" COLOR_RESET "\n", g, best_cost_ever);
+            }
+        }
+
+        // Swap pointers
+        generation *temp = current_gen;
+        current_gen = next_gen;
+        next_gen = temp;
+    }
+
+    printf(COLOR_YELLOW "[GA-END]" COLOR_RESET " Total Generations: %d | Final Cost: %.2f\n", g, best_cost_ever);
+
+    update_best_solution(inst, current_gen->champion);
+
+    free_generation(current_gen);
+    free_generation(next_gen);
+}
+
+generation *create_generation(instance *inst, int pop_size)
+{
+    // 1. Allocate the generation struct itself
+    generation *gen = (generation *)malloc(sizeof(generation));
+    if (gen == NULL)
+        print_error("Allocation failed for generation struct.");
+
+    gen->inst = inst;
+    gen->population_size = pop_size;
+    gen->champion = NULL;
+
+    // 2. Allocate the array of solution structs
+    gen->population = (solution *)malloc(pop_size * sizeof(solution));
+    if (gen->population == NULL)
+        print_error("Allocation failed for population array.");
+
+    // 3. Allocate the individual tours for every solution in the population
+    for (int i = 0; i < pop_size; i++)
+    {
+        gen->population[i].tour = (int *)malloc(inst->nnodes * sizeof(int));
+        if (gen->population[i].tour == NULL)
+            print_error("Allocation failed for tour array.");
+
+        gen->population[i].cost = INF; // Initialize with a high value
+    }
+
+    return gen;
+}
+
+void free_generation(generation *gen)
+{
+    if (gen == NULL)
+        return;
+
+    // 1. Free every individual tour
+    if (gen->population != NULL)
+    {
+        for (int i = 0; i < gen->population_size; i++)
+        {
+            if (gen->population[i].tour != NULL)
+            {
+                free(gen->population[i].tour);
+            }
+        }
+        // 2. Free the population array
+        free(gen->population);
+    }
+
+    // 3. Free the generation shell
+    free(gen);
 }
