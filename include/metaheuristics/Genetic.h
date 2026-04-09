@@ -4,7 +4,7 @@
 #include "core/utilities.h"
 #include "construction/greedyNN.h"
 #include "heuristics/2_opt.h"
-#include "modules/solver.h"
+#include "modules/solver.h" // For apply_2opt_local_search
 #include <time.h>
 #include <pthread.h>
 #include <stdlib.h>

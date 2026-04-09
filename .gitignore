@@ -1,6 +1,7 @@
 *.o
 *.exe
 *.out
+*.d
 /bin
 
 

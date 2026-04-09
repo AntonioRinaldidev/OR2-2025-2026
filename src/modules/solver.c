@@ -117,7 +117,7 @@ void solve_tsp(instance *inst, double start_time)
         if (timelimit_check(inst, start_time))
             break;
 
-        current_sol.cost = 0.0; // Reset Cost
+        current_sol.cost = INF; // Reset Cost
 
         greedyNN(inst, &current_sol, start_node);
 
@@ -127,6 +127,15 @@ void solve_tsp(instance *inst, double start_time)
                    start_node, current_sol.cost);
         }
 
+        if (!is_tour_feasible(&current_sol, inst))
+        {
+            if (VERBOSE >= 1)
+            {
+                printf(COLOR_RED "[FAILURE]" COLOR_RESET " Start node %-3d | Greedy Cost: " COLOR_ORANGE "%.2f" COLOR_RESET "\n",
+                       start_node, current_sol.cost);
+            }
+            continue;
+        }
         refine_solution(inst, &current_sol, start_time);
 
         if (current_sol.cost < inst->best_solution.cost - EPSILON)

@@ -3,15 +3,19 @@
 #include <time.h>
 
 // TODO:
-//  - [ ] Clean the code and make it more readable
-//  - [ ] Use update_best_solution to update the best solution
+
 //  - [ ] Add the Epsilon parameter to command line
-//  - [ ] Implement Time Limit
-//  - [ ] Implement gnu plot window
 //  - [ ] Finish log refactoring
+//  - [ ] Add multi-threading to solver
+//  - [ ] Add the direct elimination of a percentage of the population ( worst performing solutions)
 //  - [ ] Add Extra mileage (optional implementation)
+//  - [ ] Add Grasp (optional implementation)
+//  - [ ] Add Tabu Search (optional implementation)
+//  - [ ] Add Performance Profiles
+// For the thesis  we will say the algorithm, describe t, maybe pseudocode, show the results, use performance profile to choose hyperparameters
+
 /**
- * Main entry point for the TSP/VRP solver.
+ * Main entry point for the TSP solver.
  * Initializes the problem instance, parses command-line arguments, reads the input map,
  * and attempts to load, validate, and plot an optimal solution if one is available.
  * @param argc The number of command-line arguments.
@@ -53,7 +57,7 @@ int main(int argc, char **argv)
 
         if (inst.ga_applied)
         {
-            printf("\n" COLOR_CYAN "[GA-INIT] Finding initial Champion...\n" COLOR_RESET);
+
             // The GA handles its own initialization (seeding with VNS) and evolution
             run_genetic_algorithm(&inst);
         }

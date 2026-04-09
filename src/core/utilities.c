@@ -27,7 +27,7 @@ void free_instance(instance *inst)
 void open_gnuplot(instance *inst)
 {
     // Use the Homebrew path we found earlier
-    inst->gnuplot_pipe = popen("/opt/homebrew/bin/gnuplot -persist", "w");
+    inst->gnuplot_pipe = popen("/opt/homebrew/bin/gnuplot -persist 2>/dev/null", "w");
     if (!inst->gnuplot_pipe)
         return;
 
@@ -675,7 +675,7 @@ double calculate_cost(instance *inst, int *tour)
 void plot_tour(instance *inst, int *tour, char *title) // Function to generate a plot of the tour title)
 {
 
-    FILE *gnuplotPipe = popen("gnuplot", "w");
+    FILE *gnuplotPipe = popen("gnuplot 2>/dev/null", "w");
     if (!gnuplotPipe)
     {
         printf(COLOR_RED "Error: Could not open GNUplot.\n" COLOR_RESET);

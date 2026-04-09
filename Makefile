@@ -4,9 +4,13 @@ CPLEX_INCLUDE := $(CPLEX_PATH)/include/ilcplex
 CPLEX_LIB     := $(CPLEX_PATH)/lib/arm64_osx/static_pic
 
 # --- Configurazione Standard ---
+# Default optimization flags (used if you just type 'make')
+OPT_FLAGS ?= -O0 -g
+
 CC      := gcc
-CFLAGS  := -Wall -Wextra -O0 -g -Iinclude -I$(CPLEX_INCLUDE) -std=c11
-LDFLAGS := -L$(CPLEX_LIB) -lcplex -lpthread -lm -ldl 
+# Note the use of '=' instead of ':=' so the flags can update dynamically
+CFLAGS  = -Wall -Wextra $(OPT_FLAGS) -Iinclude -I$(CPLEX_INCLUDE) -std=c11 -MMD -MP
+LDFLAGS = -L$(CPLEX_LIB) -lcplex -lpthread -lm -ldl 
 
 # --- Cartelle ---
 SRC_DIR := src
@@ -28,8 +32,6 @@ NC     := \033[0m # No Color
 SOURCES := $(shell find $(SRC_DIR) -name '*.c')
 OBJECTS := $(SOURCES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
-
-
 # --- Regole ---
 
 # Compila ed esegue l'analisi
@@ -50,7 +52,6 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@echo "$(YELLOW)Compiling $<...$(NC)"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-
 # Pulizia
 clean:
 	@rm -rf $(OBJ_DIR) $(BIN_DIR)
@@ -62,4 +63,27 @@ list:
 	@echo "$(CYAN)Current instances in $(DATA_DIR):$(NC)"
 	@ls $(DATA_DIR)
 
-.PHONY: all clean check setup list
+# --- Profili di Build Aggiuntivi ---
+
+release: OPT_FLAGS := -O3 -DNDEBUG
+release: all
+	@echo "$(GREEN)🟢 Release build complete (Optimized for speed).$(NC)"
+
+debug: OPT_FLAGS := -O0 -g
+debug: all
+	@echo "$(YELLOW)🟡 Debug build complete.$(NC)"
+
+asan: OPT_FLAGS := -O1 -g -fsanitize=address -fno-omit-frame-pointer
+asan: LDFLAGS += -fsanitize=address
+asan: all
+	@echo "$(RED)🔴 AddressSanitizer build complete. Run the program to check for memory leaks.$(NC)"
+
+run: $(TARGET)
+	@echo "$(CYAN)Running quick test...$(NC)"
+	./$(TARGET) -file $(DATA_DIR)/a280.tsp -2opt -verbose 2
+
+.PHONY: all clean check setup list release debug asan run
+
+# --- Tracciamento Dipendenze ---
+
+-include $(OBJECTS:.o=.d)

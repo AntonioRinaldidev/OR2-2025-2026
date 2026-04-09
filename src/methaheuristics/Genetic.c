@@ -23,6 +23,17 @@ void crossover(const instance *inst, int *parent1, int *parent2, int *child1, in
             child2[i] = parent1[i - nnodes / 2];
     }
 }
+/**
+ * @brief Applies the Order Crossover (OX1) to generate a single child.
+ *
+ * OX1 crossover ensures permutation safety by preserving the relative order of nodes between two parents.
+ *
+ * @param inst The instance (problem) for which the crossover is performed.
+ * @param parent1 The first parent.
+ * @param parent2 The second parent.
+ * @param child The child solution to be generated.
+ * @param visited_nodes A boolean array to keep track of nodes already visited in the child.
+ */
 void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes)
 {
     if (!child)
@@ -223,8 +234,9 @@ void natural_selection(generation *gen, generation *new_gen)
             new_gen->champion = &new_gen->population[i + 1];
         }
     }
-
-    // 6. Random selection for the remaining children
+    // TODO: Polarize the selection towards fitness of th echildren
+    // Remove x percentage of the  worst children
+    //  6. Random selection for the remaining children
     for (int i = elites + 1; i < pop_size; i++)
     {
         // Pick a random index from 'elites' up to the end of the pool

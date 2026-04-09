@@ -2,12 +2,65 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Debug: Specific File (att48)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file",
+        "data/att48.tsp",
+        "-2opt",
+        "-verbose",
+        "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/bin/solver",
+      "preLaunchTask": "Build Solver"
+      
+    },
+    {
+      "name": "Debug: Genetic Algorithm (a280)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file",
+        "data/a280.tsp",
+        "-2opt",
+        "-ga",
+        "-pop",
+        "100",
+        "-elites",
+        "15",
+        "-verbose",
+        "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/bin/solver",
+      "preLaunchTask": "Build Solver"
+    },
+    {
+      "name": "Debug: Random Generation",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-seed",
+        "12345",
+        "-node_number",
+        "50",
+        "-verbose",
+        "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${workspaceFolder}/bin/solver",
+      "preLaunchTask": "Build Solver"
+    },
+    {
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
       "request": "launch",
       "args": [],
       "cwd": "/Users/kryson/OR2-2025-2026/src",
-      "program": "/Users/kryson/OR2-2025-2026/src/build/Debug/outDebug"
+      "program": "/Users/kryson/OR2-2025-2026/src/build/Debug/outDebug",
+      "preLaunchTask": "Build Solver"
     }
   ]
 }
