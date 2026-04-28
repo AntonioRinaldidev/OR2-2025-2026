@@ -2,7 +2,7 @@
 #define GENETIC_H
 #include "core/structures.h"
 #include "core/utilities.h"
-#include "construction/greedyNN.h"
+#include "construction/NearestN.h"
 #include "heuristics/2_opt.h"
 #include "modules/solver.h" // For apply_2opt_local_search
 #include <time.h>

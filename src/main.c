@@ -1,17 +1,17 @@
 #include "core/utilities.h"
 #include "modules/solver.h"
+#include "core/solve_with_cplex.h"
 #include <time.h>
 
 // TODO:
 
 //  - [ ] Add the Epsilon parameter to command line
-//  - [ ] Finish log refactoring
 //  - [ ] Add multi-threading to solver
 //  - [ ] Add the direct elimination of a percentage of the population ( worst performing solutions)
 //  - [ ] Add Extra mileage (optional implementation)
-//  - [ ] Add Grasp (optional implementation)
 //  - [ ] Add Tabu Search (optional implementation)
 //  - [ ] Add Performance Profiles
+//  - [ ] Finish to implement the Genetic Algorithm
 // For the thesis  we will say the algorithm, describe t, maybe pseudocode, show the results, use performance profile to choose hyperparameters
 
 /**
@@ -54,6 +54,10 @@ int main(int argc, char **argv)
         inst.best_solution.cost = INF;
 
         inst.start_time = start_time;
+        if (inst.use_cplex)
+        {
+            solve_with_cplex(&inst);
+        }
 
         if (inst.ga_applied)
         {
@@ -64,7 +68,7 @@ int main(int argc, char **argv)
         else
         {
             // Standard multi-start Greedy + VNS approach
-            solve_tsp(&inst, start_time);
+            // solve_tsp(&inst, start_time);
         }
 
         // --- OPTIMAL TOUR CHECK ---

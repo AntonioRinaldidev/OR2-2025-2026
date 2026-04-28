@@ -288,6 +288,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->crossover_type = CROSSOVER_NAIVE; // Default to Naive Crossover
     inst->ga_applied = false;               // Genetic Algorithm off by default
     inst->population_size = 100;
+    inst->use_cplex = false;
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
     inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
@@ -382,6 +383,12 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
+        if (strcmp(argv[i], "-cplex") == 0)
+        {
+            inst->use_cplex = true;
+            continue;
+        }
+
         // total time limit
         if (strcmp(argv[i], "-time_limit") == 0 || strcmp(argv[i], "-time") == 0)
         {
@@ -443,6 +450,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -verbose <n>        Set verbosity level (0=silent, 1=info, 2=default, 3=detail, 4=debug, 5=trace).\n");
 
         printf("\nOPTIMIZATION CONSTRAINTS:\n");
+        printf("  -cplex              Use CPLEX to solve the problem to optimality\n");
         printf("  -seed <n>           Set the random seed for reproducible results\n");
         printf("  -time_limit <s>     Maximum execution time in seconds before termination\n");
 
@@ -476,6 +484,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -verbose <n>        : %d\n", VERBOSE);
 
         printf(COLOR_MAGENTA "\nOPTIMIZATION CONSTRAINTS:\n" COLOR_RESET);
+        printf("  -cplex              : %s\n", inst->use_cplex ? "ON" : "OFF");
         printf("  -seed <n>           : %d\n", inst->randomseed);
         if (inst->timelimit >= CPX_INFBOUND)
             printf("  -time_limit <s>     : Infinity\n");

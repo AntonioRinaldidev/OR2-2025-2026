@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <cplex.h>
+#include <ilcplex/cplex.h>
 #include <pthread.h>
 
 #include "structures.h"

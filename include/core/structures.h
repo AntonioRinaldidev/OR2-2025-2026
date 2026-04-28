@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <ilcplex/cplex.h>
 
 typedef struct
 {
@@ -22,6 +23,15 @@ typedef enum
     CROSSOVER_NAIVE = 0,
     CROSSOVER_OX1 = 1
 } CrossoverType;
+
+typedef struct
+{
+    int *succ;    // Stores directed successors for cycle walking
+    int *comp;    // Stores component IDs (subtours)
+    int *visited; // Boolean array for component identification
+    int **adj;    // Adjacency list representation of current candidate xstar
+
+} separationThreadWorkspace;
 
 typedef struct
 {
@@ -48,6 +58,12 @@ typedef struct
     int population_size;
     CrossoverType crossover_type;
     int percentage_elites;
+
+    CPXENVptr env;
+    CPXLPptr lp;
+
+    bool use_cplex;
+    separationThreadWorkspace *thread_workspaces[128];
 
 } instance;
 
