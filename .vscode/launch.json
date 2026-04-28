@@ -2,20 +2,21 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug: Specific File (att48)",
+      "name": "Debug: Cplex (a280)",
       "type": "lldb",
       "request": "launch",
       "args": [
         "-file",
-        "data/att48.tsp",
-        "-2opt",
+        "data/a280.tsp",
+        "-cplex",
+        "-time_limit",
+        "120",
         "-verbose",
         "3"
       ],
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/bin/solver",
-      "preLaunchTask": "Build Solver"
-      
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
     },
     {
       "name": "Debug: Genetic Algorithm (a280)",
@@ -30,12 +31,17 @@
         "100",
         "-elites",
         "15",
+        "-time_limit",
+        "120",
+        "-threads",
+        "8",
+        "-ox1",
         "-verbose",
         "2"
       ],
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/bin/solver",
-      "preLaunchTask": "Build Solver"
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
     },
     {
       "name": "Debug: Random Generation",
@@ -50,17 +56,16 @@
         "3"
       ],
       "cwd": "${workspaceFolder}",
-      "program": "${workspaceFolder}/bin/solver",
-      "preLaunchTask": "Build Solver"
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
     },
     {
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
       "request": "launch",
       "args": [],
-      "cwd": "/Users/kryson/OR2-2025-2026/src",
-      "program": "/Users/kryson/OR2-2025-2026/src/build/Debug/outDebug",
-      "preLaunchTask": "Build Solver"
+      "cwd": "/Users/kryson/OR2-2025-2026/src/construction",
+      "program": "/Users/kryson/OR2-2025-2026/src/construction/build/Debug/outDebug"
     }
   ]
 }

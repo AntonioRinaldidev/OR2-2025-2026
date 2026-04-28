@@ -5,7 +5,7 @@
       "includePath": [
         "${workspaceFolder}/**",
         "${workspaceFolder}/include/**/*",
-        "/Applications/CPLEX_Studio2211/cplex/include/ilcplex"
+        "/Applications/CPLEX_Studio2211/cplex/include"
         
       ],
       "compilerPath": "/usr/bin/clang",
