@@ -18,6 +18,12 @@ void change_bound(instance *inst, int edge_idx, double lb, double ub)
 
 void solve_matheuristic(instance *inst, double p)
 {
+
+    if (inst->best_solution.tour == NULL || inst->pool_size == 0)
+    {
+        printf("ERROR: No initial solution available for matheuristic.\n");
+        return;
+    }
     int n_edges = inst->nnodes * (inst->nnodes - 1) / 2;
     int n_fixed = 0;
     int *fixed_indices = (int *)malloc(n_edges * sizeof(int));

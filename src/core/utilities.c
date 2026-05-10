@@ -292,6 +292,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
     inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
+    inst->use_matheuristic = false;
 
     int help = 0;
     if (argc < 1)
@@ -388,6 +389,11 @@ void parse_command_line(int argc, char **argv, instance *inst)
             inst->use_cplex = true;
             continue;
         }
+        if (strcmp(argv[i], "-matheuristic") == 0)
+        {
+            inst->use_matheuristic = true;
+            continue;
+        }
 
         // total time limit
         if (strcmp(argv[i], "-time_limit") == 0 || strcmp(argv[i], "-time") == 0)
@@ -460,6 +466,9 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -ga                 Enable the Genetic Algorithm metaheuristic\n");
         printf("  -elites <n>         Percentage of elites to keep in Genetic Algorithm (0-100, default: 10)\n");
         printf("  -ox1                Use Order Crossover (OX1) instead of naive crossover in Genetic Algorithm\n");
+
+        printf("\nMATEHEURISTICS:\n");
+        printf("  -matheuristic       Enable the Matheuristic metaheuristic\n");
         printf("\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
@@ -509,6 +518,12 @@ void parse_command_line(int argc, char **argv, instance *inst)
         }
         else
             printf("  -ga                 : Not applied\n");
+
+        printf(COLOR_MAGENTA "\nMATEHEURISTICS:\n" COLOR_RESET);
+        if (inst->use_matheuristic)
+            printf("  -matheuristic       : Applied\n");
+        else
+            printf("  -matheuristic       : Not applied\n");
 
         printf("\n");
 
