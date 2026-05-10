@@ -694,7 +694,7 @@ cleanup:
  * @param userhandle User data pointer containing the problem instance.
  * @return 0 on success.
  */
-static int CPXPUBLIC callback_driver(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void *userhandle)
+int CPXPUBLIC callback_driver(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void *userhandle)
 {
     instance *inst = (instance *)userhandle;
     int threadid;

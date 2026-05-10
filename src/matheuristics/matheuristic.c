@@ -106,7 +106,7 @@ void solve_matheuristic(instance *inst, double p)
                 fixed_indices[n_fixed++] = xpos(inst, i, succ[i]);
             }
         }
-        double remaining = inst->timelimit - (second() - inst->start_time);
+        double remaining = inst->timelimit - (get_wall_time() - inst->start_time);
         CPXsetdblparam(inst->env, CPX_PARAM_TILIM, remaining);
         CPXmipopt(inst->env, inst->lp);
         CPXgetx(inst->env, inst->lp, xstar, 0, n_edges - 1);
