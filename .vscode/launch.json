@@ -51,9 +51,13 @@
         "-seed",
         "12345",
         "-node_number",
-        "50",
+        "500",
+        "-cplex",
+        "-time_limit",
+        "120",
         "-verbose",
         "3"
+
       ],
       "cwd": "${workspaceFolder}",
       "program": "${command:cmake.launchTargetPath}",

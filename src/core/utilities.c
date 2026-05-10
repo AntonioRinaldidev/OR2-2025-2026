@@ -809,6 +809,11 @@ void generate_random_tour(instance *inst, int *tour)
     }
 }
 
+double generate_random_number()
+{
+    return (double)rand() / RAND_MAX;
+}
+
 // --- INSTANCES RANDOM GENERATOR ---
 void generate_random_instance(instance *inst, double x_max, double y_max)
 {

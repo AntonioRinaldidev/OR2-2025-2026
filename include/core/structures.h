@@ -26,10 +26,13 @@ typedef enum
 
 typedef struct
 {
-    int *succ;    // Stores directed successors for cycle walking
-    int *comp;    // Stores component IDs (subtours)
-    int *visited; // Boolean array for component identification
-    int **adj;    // Adjacency list representation of current candidate xstar
+    int *succ;        // Stores directed successors for cycle walking
+    int *comp;        // Stores component IDs (subtours)
+    int *visited;     // Boolean array for component identification
+    int **adj;        // Adjacency list representation of current candidate xstar
+    int *adj_count;   // Number of neighbors for each node
+    int adj_capacity; // Capacity per node
+    int *queue;       // BFS queue
 
 } separationThreadWorkspace;
 
@@ -50,6 +53,9 @@ typedef struct
     int num_threads;
 
     solution best_solution;
+    solution *solution_pool;
+    int pool_size;
+    int max_pool_size;
 
     bool opt_applied;
     char opt_name[50];
@@ -64,6 +70,8 @@ typedef struct
 
     bool use_cplex;
     separationThreadWorkspace *thread_workspaces[128];
+
+    bool use_matheuristic;
 
 } instance;
 

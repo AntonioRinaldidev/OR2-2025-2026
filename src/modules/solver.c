@@ -152,3 +152,89 @@ void solve_tsp(instance *inst, double start_time)
 
     free(current_sol.tour);
 }
+
+void fill_solution_pool(instance *inst, double start_time)
+{
+
+    solution current_sol;
+    current_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
+    current_sol.cost = INF;
+    inst->pool_size = 0;
+    inst->max_pool_size = inst->nnodes * 0.05;
+    if (inst->max_pool_size < 1)
+        inst->max_pool_size = 1;
+    if (inst->max_pool_size > 30)
+        inst->max_pool_size = 30;
+
+    inst->solution_pool = (solution *)calloc(inst->max_pool_size, sizeof(solution));
+
+    for (int start_node = 0; start_node < inst->nnodes; start_node++)
+    {
+        if (timelimit_check(inst, start_time))
+            break;
+
+        current_sol.cost = INF; // Reset Cost
+
+        greedyNN(inst, &current_sol, start_node);
+
+        if (VERBOSE >= 3)
+        {
+            printf(COLOR_CYAN "\n[SOLVER]" COLOR_RESET " Start node %-3d | Greedy Cost: " COLOR_ORANGE "%.2f" COLOR_RESET "\n",
+                   start_node, current_sol.cost);
+        }
+
+        if (!is_tour_feasible(&current_sol, inst))
+        {
+            if (VERBOSE >= 1)
+            {
+                printf(COLOR_RED "[FAILURE]" COLOR_RESET " Start node %-3d | Greedy Cost: " COLOR_ORANGE "%.2f" COLOR_RESET "\n",
+                       start_node, current_sol.cost);
+            }
+            continue;
+        }
+        refine_solution(inst, &current_sol, start_time);
+        if (current_sol.cost < inst->best_solution.cost - EPSILON)
+        {
+            update_best_solution(inst, &current_sol);
+
+            if (VERBOSE >= 1)
+            {
+                printf(COLOR_GREEN "[NEW BEST]" COLOR_RESET " Node %d | Global Cost: " COLOR_GREEN "%.2f" COLOR_RESET "\n",
+                       start_node, inst->best_solution.cost);
+            }
+        }
+        if (current_sol.cost < inst->best_solution.cost * 1.10)
+        {
+
+            if (inst->pool_size < inst->max_pool_size)
+            {
+                inst->solution_pool[inst->pool_size].tour = (int *)calloc(inst->nnodes, sizeof(int));
+                memcpy(inst->solution_pool[inst->pool_size].tour, current_sol.tour, inst->nnodes * sizeof(int));
+                inst->solution_pool[inst->pool_size].cost = current_sol.cost;
+                inst->pool_size++;
+            }
+            else
+            {
+                int worst_index = 0;
+                double worst_cost = inst->solution_pool[0].cost;
+                for (int i = 1; i < inst->pool_size; i++)
+                {
+                    if (inst->solution_pool[i].cost > worst_cost)
+                    {
+                        worst_cost = inst->solution_pool[i].cost;
+                        worst_index = i;
+                    }
+                }
+                if (current_sol.cost < worst_cost)
+                {
+                    free(inst->solution_pool[worst_index].tour);
+                    inst->solution_pool[worst_index].tour = (int *)malloc(inst->nnodes * sizeof(int));
+                    memcpy(inst->solution_pool[worst_index].tour, current_sol.tour, inst->nnodes * sizeof(int));
+                    inst->solution_pool[worst_index].cost = current_sol.cost;
+                }
+            }
+        }
+    }
+
+    free(current_sol.tour);
+}

@@ -2,6 +2,7 @@
 #include "modules/solver.h"
 #include "core/solve_with_cplex.h"
 #include <time.h>
+#include "matheuristics/matheuristic.h"
 
 // TODO:
 
@@ -12,7 +13,8 @@
 //  - [ ] Add Tabu Search (optional implementation)
 //  - [ ] Add Performance Profiles
 //  - [ ] Finish to implement the Genetic Algorithm
-// For the thesis  we will say the algorithm, describe t, maybe pseudocode, show the results, use performance profile to choose hyperparameters
+// For the thesis  we will say the algorithm, describe it, maybe pseudocode, show the results, use performance profile to choose hyperparameters
+// For the final thesis, remember to track the branch and cut  with relaxation and without relaxation in the performance profile
 
 /**
  * Main entry point for the TSP solver.
@@ -59,16 +61,25 @@ int main(int argc, char **argv)
             solve_with_cplex(&inst);
         }
 
-        if (inst.ga_applied)
+        else if (inst.ga_applied)
         {
 
             // The GA handles its own initialization (seeding with VNS) and evolution
             run_genetic_algorithm(&inst);
         }
+        else if (inst.use_matheuristic)
+        {
+            fill_solution_pool(&inst, start_time);
+            solve_matheuristic(&inst, 0.5);
+
+            for (int i = 0; i < inst.pool_size; i++)
+                free(inst.solution_pool[i].tour);
+            free(inst.solution_pool);
+        }
         else
         {
             // Standard multi-start Greedy + VNS approach
-            // solve_tsp(&inst, start_time);
+            solve_tsp(&inst, start_time);
         }
 
         // --- OPTIMAL TOUR CHECK ---

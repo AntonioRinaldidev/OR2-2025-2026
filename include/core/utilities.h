@@ -57,6 +57,7 @@ double calculate_cost(instance *inst, int *tour);
 void plot_tour(instance *inst, int *tour, char *title);
 int parse_tour(instance *inst, int *tour);
 void generate_random_tour(instance *inst, int *tour);
+double generate_random_number();
 
 static inline double dist(int i, int j, instance *inst)
 {
