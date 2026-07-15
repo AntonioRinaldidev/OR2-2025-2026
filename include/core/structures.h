@@ -64,6 +64,8 @@ typedef struct
     int population_size;
     CrossoverType crossover_type;
     int percentage_elites;
+    int percentage_discard;
+    int tournament_strength;
 
     CPXENVptr env;
     CPXLPptr lp;

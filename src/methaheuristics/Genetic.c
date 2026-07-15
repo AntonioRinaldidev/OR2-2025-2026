@@ -223,6 +223,22 @@ void natural_selection(generation *gen, generation *new_gen)
     if (elites + 1 > pop_size)
         elites = pop_size - 1;
 
+    // 6. Remove x percentage of the worst children
+    int worst = (pool_size * gen->inst->percentage_discard) / 100;
+
+    if (worst < 0)
+        worst = 0;
+    if (worst >= pool_size)
+        worst = pool_size - 1;
+
+    int eligible_end = pool_size - worst;
+
+    if (eligible_end <= elites)
+    {
+        eligible_end = elites + 1;
+        worst = pool_size - eligible_end;
+    }
+
     for (int i = 0; i < elites; i++)
     {
         memcpy(new_gen->population[i + 1].tour, pool[i].tour, gen->inst->nnodes * sizeof(int));
@@ -234,18 +250,28 @@ void natural_selection(generation *gen, generation *new_gen)
             new_gen->champion = &new_gen->population[i + 1];
         }
     }
-    // TODO: Polarize the selection towards fitness of th echildren
-    // Remove x percentage of the  worst children
-    //  6. Random selection for the remaining children
+
+    //  7. Random selection for the remaining children
     for (int i = elites + 1; i < pop_size; i++)
     {
-        // Pick a random index from 'elites' up to the end of the pool
-        int rand_idx = elites + (rand() % (pool_size - elites));
-        memcpy(new_gen->population[i].tour, pool[rand_idx].tour, gen->inst->nnodes * sizeof(int));
-        new_gen->population[i].cost = pool[rand_idx].cost;
+        int best_idx = -1;
+        double best_cost = INF;
+
+        for (int t = 0; t < gen->inst->tournament_strength; t++)
+        {
+            int candidate = elites + (rand() % (eligible_end - elites));
+            if (pool[candidate].cost < best_cost)
+            {
+                best_idx = candidate;
+                best_cost = pool[candidate].cost;
+            }
+        }
+
+        memcpy(new_gen->population[i].tour, pool[best_idx].tour, gen->inst->nnodes * sizeof(int));
+        new_gen->population[i].cost = pool[best_idx].cost;
     }
 
-    // 7. Cleanup the temporary pool
+    // 8. Cleanup the temporary pool
     for (int i = 0; i < pool_size; i++)
     {
         free(pool[i].tour);

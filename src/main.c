@@ -11,7 +11,6 @@
 //  - [ ] Add the direct elimination of a percentage of the population ( worst performing solutions)
 //  - [ ] Add Extra mileage (optional implementation)
 //  - [ ] Add Tabu Search (optional implementation)
-//  - [ ] Finish to implement the Genetic Algorithm
 // For the thesis  we will say the algorithm, describe it, maybe pseudocode, show the results, use performance profile to choose hyperparameters
 // For the final thesis, remember to track the branch and cut  with relaxation and without relaxation in the performance profile
 

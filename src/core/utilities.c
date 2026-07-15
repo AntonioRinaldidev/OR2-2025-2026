@@ -287,6 +287,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->num_threads = 0;                  // Controls parallel processing (0 means automatic detection of available cores)
     inst->nnodes = 0;                       // Number of nodes for random generation
     inst->percentage_elites = 10;           // Default to 10% elites for Genetic Algorithm
+    inst->percentage_discard = 10;          // Default to 10% discard for Genetic Algorithm
+    inst->tournament_strength = 2;          // Default to 2-tournament selection
     inst->crossover_type = CROSSOVER_NAIVE; // Default to Naive Crossover
     inst->ga_applied = false;               // Genetic Algorithm off by default
     inst->population_size = 100;
@@ -388,6 +390,32 @@ void parse_command_line(int argc, char **argv, instance *inst)
         if (strcmp(argv[i], "-ox1") == 0)
         {
             inst->crossover_type = CROSSOVER_OX1;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-discard") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value after -discard");
+
+            inst->percentage_discard = atoi(argv[++i]);
+            if (inst->percentage_discard < 0 || inst->percentage_discard > 100)
+                print_error(" discard percentage must be between 0 and 100");
+            continue;
+        }
+
+        if (strcmp(argv[i], "-tournament_strength") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value after -tournament_strength");
+            int temp = atoi(argv[++i]);
+            if (temp <= 0)
+                print_error("tournament strength must be a positive integer");
+            if (temp > 3)
+            {
+                print_error("tournament strength must be in range [1,3]");
+            }
+            inst->tournament_strength = temp;
             continue;
         }
 
@@ -505,6 +533,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("\n GENETIC ALGORITHM:\n");
         printf("  -ga                 Enable the Genetic Algorithm metaheuristic\n");
         printf("  -elites <n>         Percentage of elites to keep in Genetic Algorithm (0-100, default: 10)\n");
+        printf("  -discard <n>        Percentage of individuals to discard in Genetic Algorithm (0-100, default: 10)\n");
+        printf("  -tournament_strength <n>  Strength of tournament selection in Genetic Algorithm (default: 2)\n");
         printf("  -ox1                Use Order Crossover (OX1) instead of naive crossover in Genetic Algorithm\n");
 
         printf("\nMATEHEURISTICS:\n");
@@ -551,6 +581,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -ga                 : Applied\n");
             printf("  -population         : %d\n", inst->population_size);
             printf("  -elites <n>         : %d%%\n", inst->percentage_elites);
+            printf("  -discard <n>        : %d%%\n", inst->percentage_discard);
+            printf("  -tournament_strength <n>  : %d\n", inst->tournament_strength);
             if (inst->crossover_type == CROSSOVER_OX1)
                 printf("  -crossover          : OX1 (Order Crossover)\n");
             else
@@ -684,8 +716,9 @@ void log_result(instance *inst)
     else if (inst->ga_applied)
     {
         const char *cx = (inst->crossover_type == CROSSOVER_OX1) ? "OX1" : "Naive";
-        snprintf(algo_name, sizeof(algo_name), "GA_%s_pop%d_elites%d",
-                 cx, inst->population_size, inst->percentage_elites);
+        snprintf(algo_name, sizeof(algo_name), "GA_%s_pop%d_elites%d_discard%d_tourn%d",
+                 cx, inst->population_size, inst->percentage_elites,
+                 inst->percentage_discard, inst->tournament_strength);
     }
     else if (inst->opt_applied)
     {
