@@ -244,6 +244,8 @@ void update_best_solution(instance *inst, solution *new_sol)
         {
             inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
         }
+        if (new_sol->tour == NULL)
+            return;
         memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
 
         // 2. The Live Plotting Magic
@@ -293,6 +295,11 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
     inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
     inst->use_matheuristic = false;
+    inst->use_local_branching = false;
+    inst->lb_k_init = 10;
+    inst->lb_k_min = 5;
+    inst->lb_k_max = 40;
+    inst->lb_k_step = 5;
 
     int help = 0;
     if (argc < 1)
@@ -392,6 +399,39 @@ void parse_command_line(int argc, char **argv, instance *inst)
         if (strcmp(argv[i], "-matheuristic") == 0)
         {
             inst->use_matheuristic = true;
+            continue;
+        }
+        if (strcmp(argv[i], "-local_branching") == 0)
+        {
+            inst->use_local_branching = true;
+            continue;
+        }
+        if (strcmp(argv[i], "-lb_k") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -lb_k");
+            inst->lb_k_init = atoi(argv[++i]);
+            continue;
+        }
+        if (strcmp(argv[i], "-lb_k_min") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -lb_k_min");
+            inst->lb_k_min = atoi(argv[++i]);
+            continue;
+        }
+        if (strcmp(argv[i], "-lb_k_max") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -lb_k_max");
+            inst->lb_k_max = atoi(argv[++i]);
+            continue;
+        }
+        if (strcmp(argv[i], "-lb_k_step") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -lb_k_step");
+            inst->lb_k_step = atoi(argv[++i]);
             continue;
         }
 
@@ -626,6 +666,71 @@ int is_tour_feasible(solution *sol, instance *inst)
     }
 
     return 1;
+}
+
+void log_result(instance *inst)
+{
+    // Build algorithm name from instance flags
+    char algo_name[256];
+
+    if (inst->use_cplex)
+    {
+        snprintf(algo_name, sizeof(algo_name), "CPLEX");
+    }
+    else if (inst->use_matheuristic)
+    {
+        snprintf(algo_name, sizeof(algo_name), "Matheuristic");
+    }
+    else if (inst->ga_applied)
+    {
+        const char *cx = (inst->crossover_type == CROSSOVER_OX1) ? "OX1" : "Naive";
+        snprintf(algo_name, sizeof(algo_name), "GA_%s_pop%d_elites%d",
+                 cx, inst->population_size, inst->percentage_elites);
+    }
+    else if (inst->opt_applied)
+    {
+        snprintf(algo_name, sizeof(algo_name), "VNS_2opt");
+    }
+    else
+    {
+        snprintf(algo_name, sizeof(algo_name), "GreedyNN");
+    }
+
+    char inst_name[256];
+    // Extract instance name (strip path and extension)
+    if (strcmp(inst->input_file, "NULL") == 0)
+    {
+        // Random instance: use seed and node count as name
+        snprintf(inst_name, sizeof(inst_name), "random_n%d_s%d", inst->nnodes, inst->randomseed);
+    }
+    else
+    {
+        const char *slash = strrchr(inst->input_file, '/');
+        const char *base = slash ? slash + 1 : inst->input_file;
+        strncpy(inst_name, base, sizeof(inst_name));
+        char *dot = strrchr(inst_name, '.');
+        if (dot)
+            *dot = '\0';
+    }
+
+    // Build output filename: results/GA_OX1_pop100_elites10.csv
+    char output_file[512];
+    snprintf(output_file, sizeof(output_file), "results/%s.csv", algo_name);
+
+    // Append row
+    FILE *f = fopen(output_file, "a");
+    if (!f)
+    {
+        printf(COLOR_RED "ERROR: Could not open log file %s\n" COLOR_RESET, output_file);
+        return;
+    }
+
+    fprintf(f, "%s,%.6f,%.2f\n",
+            inst_name,
+            inst->best_solution.cost,
+            get_wall_time() - inst->start_time);
+
+    fclose(f);
 }
 
 /**

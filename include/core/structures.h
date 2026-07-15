@@ -72,7 +72,23 @@ typedef struct
     separationThreadWorkspace *thread_workspaces[128];
 
     bool use_matheuristic;
+    bool use_local_branching;
+
+    // Local branching hyperparameters
+    int lb_k_init;
+    int lb_k_min;
+    int lb_k_max;
+    int lb_k_step;
 
 } instance;
+
+typedef struct
+{
+    instance *inst;
+    int start; // primo start_node di questo thread
+    int end;   // ultimo start_node di questo thread
+    double start_time;
+    solution best; // miglior soluzione trovata da questo thread
+} solver_thread_args;
 
 #endif // STRUCTURES_H

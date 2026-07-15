@@ -47,6 +47,7 @@ double get_wall_time();
 void open_gnuplot(instance *inst);
 void refresh_gnuplot(instance *inst);
 void close_gnuplot(instance *inst);
+void log_result(instance *inst);
 // TODO: Add function that returns a random number between 0 and 1.
 
 // --- TSP UTILITY FUNCTIONS ---

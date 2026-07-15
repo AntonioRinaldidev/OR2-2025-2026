@@ -53,7 +53,7 @@ void *crossover_worker(void *args);
 int compare_solutions(const void *a, const void *b);
 void natural_selection(generation *gen, generation *new_gen);
 
-void initilize_generation(generation *gen, double start_time);
+void initialize_generation(generation *gen);
 void run_genetic_algorithm(instance *inst);
 generation *create_generation(instance *inst, int pop_size);
 void free_generation(generation *gen);

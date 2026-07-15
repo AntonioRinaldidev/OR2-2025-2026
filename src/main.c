@@ -11,7 +11,6 @@
 //  - [ ] Add the direct elimination of a percentage of the population ( worst performing solutions)
 //  - [ ] Add Extra mileage (optional implementation)
 //  - [ ] Add Tabu Search (optional implementation)
-//  - [ ] Add Performance Profiles
 //  - [ ] Finish to implement the Genetic Algorithm
 // For the thesis  we will say the algorithm, describe it, maybe pseudocode, show the results, use performance profile to choose hyperparameters
 // For the final thesis, remember to track the branch and cut  with relaxation and without relaxation in the performance profile
@@ -66,6 +65,10 @@ int main(int argc, char **argv)
 
             // The GA handles its own initialization (seeding with VNS) and evolution
             run_genetic_algorithm(&inst);
+        }
+        else if (inst.use_local_branching)
+        {
+            solve_local_branching(&inst);
         }
         else if (inst.use_matheuristic)
         {
@@ -135,6 +138,7 @@ int main(int argc, char **argv)
     getchar();
     close_gnuplot(&inst);
 
+    log_result(&inst);
     free_instance(&inst);
 
     return 0;

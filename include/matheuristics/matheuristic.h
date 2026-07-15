@@ -6,5 +6,6 @@
 
 void solve_matheuristic(instance *inst, double p);
 void change_bound(instance *inst, int edge_idx, double lb, double ub);
+void solve_local_branching(instance *inst);
 
 #endif // MATHEURISTIC_H_

@@ -1,4 +1,5 @@
 #include "modules/solver.h"
+#include <unistd.h>
 
 void apply_2opt_local_search(instance *inst, solution *sol, double start_time)
 {
@@ -98,61 +99,90 @@ void refine_solution(instance *inst, solution *sol, double start_time)
     free(working_sol.tour);
 }
 
-/**
- * @brief Main entry point for the TSP solver.
- *
- * Solves the TSP using a multi-start heuristic approach. It iterates through every possible starting node, generates a Greedy NN tour, and refines it using 2-opt local search and VNS.
- *
- * @param inst A pointer to the instance structure.
- * @param start_time The starting time of the solver.
- */
-void solve_tsp(instance *inst, double start_time)
+void *solver_worker(void *args)
 {
+    solver_thread_args *arg = (solver_thread_args *)args;
     solution current_sol;
-    current_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
+    current_sol.tour = (int *)calloc(arg->inst->nnodes, sizeof(int));
     current_sol.cost = INF;
+    arg->best.tour = (int *)calloc(arg->inst->nnodes, sizeof(int));
+    arg->best.cost = INF;
 
-    for (int start_node = 0; start_node < inst->nnodes; start_node++)
+    for (int start_node = arg->start; start_node < arg->end; start_node++)
     {
-        if (timelimit_check(inst, start_time))
+        if (timelimit_check(arg->inst, arg->start_time))
             break;
 
-        current_sol.cost = INF; // Reset Cost
+        current_sol.cost = INF;
+        greedyNN(arg->inst, &current_sol, start_node);
 
-        greedyNN(inst, &current_sol, start_node);
-
-        if (VERBOSE >= 3)
-        {
-            printf(COLOR_CYAN "\n[SOLVER]" COLOR_RESET " Start node %-3d | Greedy Cost: " COLOR_ORANGE "%.2f" COLOR_RESET "\n",
-                   start_node, current_sol.cost);
-        }
-
-        if (!is_tour_feasible(&current_sol, inst))
-        {
-            if (VERBOSE >= 1)
-            {
-                printf(COLOR_RED "[FAILURE]" COLOR_RESET " Start node %-3d | Greedy Cost: " COLOR_ORANGE "%.2f" COLOR_RESET "\n",
-                       start_node, current_sol.cost);
-            }
+        if (!is_tour_feasible(&current_sol, arg->inst))
             continue;
-        }
-        refine_solution(inst, &current_sol, start_time);
 
-        if (current_sol.cost < inst->best_solution.cost - EPSILON)
+        refine_solution(arg->inst, &current_sol, arg->start_time);
+
+        if (current_sol.cost < arg->best.cost - EPSILON)
         {
-            update_best_solution(inst, &current_sol);
-
-            if (VERBOSE >= 1)
-            {
-                printf(COLOR_GREEN "[NEW BEST]" COLOR_RESET " Node %d | Global Cost: " COLOR_GREEN "%.2f" COLOR_RESET "\n",
-                       start_node, inst->best_solution.cost);
-            }
+            memcpy(arg->best.tour, current_sol.tour, arg->inst->nnodes * sizeof(int));
+            arg->best.cost = current_sol.cost;
         }
     }
 
     free(current_sol.tour);
+    return NULL;
 }
 
+void solve_tsp(instance *inst, double start_time)
+{
+    int num_threads;
+    if (inst->num_threads <= 0)
+        num_threads = (int)sysconf(_SC_NPROCESSORS_ONLN); // Default to number of cores
+    num_threads = inst->num_threads;
+
+    // Cap threads to number of nodes
+    if (num_threads > inst->nnodes)
+        num_threads = inst->nnodes;
+    pthread_t *threads = malloc(num_threads * sizeof(pthread_t));
+    solver_thread_args *args = malloc(num_threads * sizeof(solver_thread_args));
+
+    int nodes_per_thread = inst->nnodes / num_threads;
+    int remainder = inst->nnodes % num_threads;
+    int current_start = 0;
+
+    // Spawn threads
+    for (int t = 0; t < num_threads; t++)
+    {
+        args[t].inst = inst;
+        args[t].start_time = start_time;
+        args[t].start = current_start;
+        args[t].end = current_start + nodes_per_thread + (t < remainder ? 1 : 0);
+        args[t].best.tour = NULL;
+        args[t].best.cost = INF;
+        current_start = args[t].end;
+
+        pthread_create(&threads[t], NULL, solver_worker, &args[t]);
+    }
+
+    // Join threads and collect best solution
+    for (int t = 0; t < num_threads; t++)
+    {
+        pthread_join(threads[t], NULL);
+
+        if (args[t].best.cost < inst->best_solution.cost - EPSILON)
+        {
+            update_best_solution(inst, &args[t].best);
+            if (VERBOSE >= 1)
+                printf(COLOR_GREEN "[NEW BEST]" COLOR_RESET " Thread %d | Global Cost: " COLOR_GREEN "%.2f" COLOR_RESET "\n",
+                       t, inst->best_solution.cost);
+        }
+
+        if (args[t].best.tour)
+            free(args[t].best.tour);
+    }
+
+    free(threads);
+    free(args);
+}
 void fill_solution_pool(instance *inst, double start_time)
 {
 
