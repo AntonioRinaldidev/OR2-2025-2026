@@ -36,6 +36,8 @@
         "-threads",
         "8",
         "-ox1",
+        "-seed",
+        "42",
         "-verbose",
         "2"
       ],
@@ -57,12 +59,369 @@
         "120",
         "-verbose",
         "3"
-
       ],
       "cwd": "${workspaceFolder}",
       "program": "${command:cmake.launchTargetPath}",
       "preLaunchTask": "CMake: build"
     },
+
+    {
+      "name": "Test: Repro Run A (2opt, seed 42, 4 threads)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "42",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: Repro Run B (2opt, seed 42, 4 threads - should match Run A)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "42",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: Repro - different thread count (seed 42, 8 threads - expected to differ)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "42",
+        "-threads", "8",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: GA Repro Run A (seed 42, ox1, 4 threads)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-ga",
+        "-ox1",
+        "-seed", "42",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: GA Repro Run B (seed 42, ox1, 4 threads - should match Run A)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-ga",
+        "-ox1",
+        "-seed", "42",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: threads=0 auto-detect (default, no crash expected)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "1",
+        "-time_limit", "10",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: thread cap on tiny instance (node_number 3)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-seed", "1",
+        "-node_number", "3",
+        "-2opt",
+        "-threads", "0",
+        "-time_limit", "5",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: CLI - file mode, no seed, no -2opt/-ga (should run fine)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: CLI - file mode + 2opt, NO seed (should ERROR)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: CLI - file mode + cardinality_grasp, NO seed (should ERROR)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-cardinality_grasp", "5",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: CLI - file mode + cplex, NO seed (should run fine)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-cplex",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: CLI - node_number, NO seed (should ERROR, pre-existing rule)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-node_number", "100",
+        "-cplex",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: epsilon = 0 (should ERROR)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "1",
+        "-epsilon", "0",
+        "-time_limit", "5",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: epsilon = 0.01 (looser tolerance, config summary should show 0.01 not 0.000)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-2opt",
+        "-seed", "1",
+        "-epsilon", "0.01",
+        "-time_limit", "10",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: local_branching sub_time cap (time_limit 15, check no overshoot)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-local_branching",
+        "-time_limit", "15",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: cardinality_grasp (k=5, seed 42)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-cardinality_grasp", "5",
+        "-seed", "42",
+        "-time_limit", "10",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: value_grasp alpha=0 (should behave ~greedy)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-value_grasp", "0.0",
+        "-seed", "42",
+        "-time_limit", "10",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: value_grasp alpha=1 (should be much more random/variable)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-value_grasp", "1.0",
+        "-seed", "42",
+        "-time_limit", "10",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: baseline greedy, no construction flag (seed 42, for alpha=0 comparison)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-seed", "42",
+        "-time_limit", "10",
+        "-verbose", "3"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: Repro - random instance A (seed 42, node_number 280, 4 threads)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-seed", "42",
+        "-node_number", "280",
+        "-2opt",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: Repro - random instance B (should match instance A)",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-seed", "42",
+        "-node_number", "280",
+        "-2opt",
+        "-threads", "4",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
+    {
+      "name": "Test: update_best_solution guard - GA end-of-run",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-ga",
+        "-ox1",
+        "-seed", "1",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+    {
+      "name": "Test: update_best_solution guard - CPLEX end-of-run",
+      "type": "lldb",
+      "request": "launch",
+      "args": [
+        "-file", "data/a280.tsp",
+        "-cplex",
+        "-seed", "1",
+        "-time_limit", "20",
+        "-verbose", "2"
+      ],
+      "cwd": "${workspaceFolder}",
+      "program": "${command:cmake.launchTargetPath}",
+      "preLaunchTask": "CMake: build"
+    },
+
     {
       "name": "C/C++ Runner: Debug Session",
       "type": "lldb",
