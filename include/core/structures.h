@@ -36,6 +36,13 @@ typedef struct
 
 } separationThreadWorkspace;
 
+typedef enum
+{
+    CONSTRUCT_GREEDY = 0,
+    CONSTRUCT_CARDINALITY_GRASP = 1,
+    CONSTRUCT_VALUE_GRASP = 2
+} ConstructionType;
+
 typedef struct
 {
     int nnodes;
@@ -56,6 +63,10 @@ typedef struct
     solution *solution_pool;
     int pool_size;
     int max_pool_size;
+
+    ConstructionType construction_type;
+    int grasp_cardinality;
+    double grasp_alpha;
 
     bool opt_applied;
     char opt_name[50];

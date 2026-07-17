@@ -114,7 +114,19 @@ void *solver_worker(void *args)
             break;
 
         current_sol.cost = INF;
-        greedyNN(arg->inst, &current_sol, start_node);
+
+        switch (arg->inst->construction_type)
+        {
+        case CONSTRUCT_CARDINALITY_GRASP:
+            cardinality_grasp(arg->inst, &current_sol, arg->inst->grasp_cardinality, start_node, &arg->rand_seed);
+            break;
+        case CONSTRUCT_VALUE_GRASP:
+            value_based_grasp(arg->inst, arg->inst->grasp_alpha, &current_sol, start_node, &arg->rand_seed);
+            break;
+        default:
+            greedyNN(arg->inst, &current_sol, start_node);
+            break;
+        }
 
         if (!is_tour_feasible(&current_sol, arg->inst))
             continue;
@@ -213,7 +225,18 @@ void fill_solution_pool(instance *inst, double start_time)
 
         current_sol.cost = INF; // Reset Cost
 
-        greedyNN(inst, &current_sol, start_node);
+        switch (inst->construction_type)
+        {
+        case CONSTRUCT_CARDINALITY_GRASP:
+            cardinality_grasp(inst, &current_sol, inst->grasp_cardinality, start_node, &local_seed);
+            break;
+        case CONSTRUCT_VALUE_GRASP:
+            value_based_grasp(inst, inst->grasp_alpha, &current_sol, start_node, &local_seed);
+            break;
+        default:
+            greedyNN(inst, &current_sol, start_node);
+            break;
+        }
 
         if (VERBOSE >= 3)
         {

@@ -289,6 +289,9 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->ga_applied = false;               // Genetic Algorithm off by default
     inst->population_size = 100;
     inst->use_cplex = false;
+    inst->construction_type = CONSTRUCT_GREEDY; // Default to plain Greedy NN
+    inst->grasp_cardinality = 5;                // Default RCL size for cardinality GRASP
+    inst->grasp_alpha = 0.3;                    // Default RCL threshold fraction for value-based GRASP
 
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
@@ -353,6 +356,28 @@ void parse_command_line(int argc, char **argv, instance *inst)
         {
             strcpy(inst->opt_name, "2-opt");
             inst->opt_applied = 1;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-cardinality_grasp") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value for -cardinality_grasp");
+            inst->construction_type = CONSTRUCT_CARDINALITY_GRASP;
+            inst->grasp_cardinality = atoi(argv[++i]);
+            if (inst->grasp_cardinality < 1)
+                print_error(" -cardinality_grasp value must be at least 1");
+            continue;
+        }
+
+        if (strcmp(argv[i], "-value_grasp") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value for -value_grasp");
+            inst->construction_type = CONSTRUCT_VALUE_GRASP;
+            inst->grasp_alpha = atof(argv[++i]);
+            if (inst->grasp_alpha < 0.0 || inst->grasp_alpha > 1.0)
+                print_error(" -value_grasp alpha must be between 0 and 1");
             continue;
         }
 
@@ -496,8 +521,9 @@ void parse_command_line(int argc, char **argv, instance *inst)
     int seed_set = (inst->randomseed != -1);
     int nodes_set = (inst->nnodes > 0);
     int needs_seed_for_algorithm = inst->ga_applied ||
-                                   (!inst->use_cplex && !inst->use_local_branching && !inst->use_matheuristic && inst->opt_applied);
-
+                                   inst->construction_type != CONSTRUCT_GREEDY ||
+                                   (!inst->use_cplex && !inst->use_local_branching &&
+                                    !inst->use_matheuristic && inst->opt_applied);
     if (file_mode && nodes_set)
     {
         print_error("Cannot use file mode (-file) with -node_number (node count comes from the file).");
@@ -546,12 +572,15 @@ void parse_command_line(int argc, char **argv, instance *inst)
 
         printf("\nOPTIMIZATION HEURISTICS:\n");
         printf("  -2opt               Apply 2-opt local search heuristic\n");
+
         printf("\n GENETIC ALGORITHM:\n");
         printf("  -ga                 Enable the Genetic Algorithm metaheuristic\n");
         printf("  -elites <n>         Percentage of elites to keep in Genetic Algorithm (0-100, default: 10)\n");
         printf("  -discard <n>        Percentage of individuals to discard in Genetic Algorithm (0-100, default: 10)\n");
         printf("  -tournament_strength <n>  Strength of tournament selection in Genetic Algorithm (default: 2)\n");
         printf("  -ox1                Use Order Crossover (OX1) instead of naive crossover in Genetic Algorithm\n");
+        printf("  -cardinality_grasp <k>  Use Cardinality GRASP construction with RCL size k\n");
+        printf("  -value_grasp <alpha>    Use Value-based GRASP construction with RCL threshold alpha (0-1)\n");
 
         printf("\nMATEHEURISTICS:\n");
         printf("  -matheuristic       Enable the Matheuristic metaheuristic\n");
@@ -591,6 +620,14 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -2opt               : Applied\n");
         else
             printf("  -2opt               : Not applied\n");
+
+        printf(COLOR_MAGENTA "\nCONSTRUCTION HEURISTIC:\n" COLOR_RESET);
+        if (inst->construction_type == CONSTRUCT_CARDINALITY_GRASP)
+            printf("  -cardinality_grasp  : k = %d\n", inst->grasp_cardinality);
+        else if (inst->construction_type == CONSTRUCT_VALUE_GRASP)
+            printf("  -value_grasp        : alpha = %.2f\n", inst->grasp_alpha);
+        else
+            printf("  construction        : Greedy NN (default)\n");
 
         printf(COLOR_MAGENTA "\nGENETIC ALGORITHM:\n" COLOR_RESET);
         if (inst->ga_applied)
