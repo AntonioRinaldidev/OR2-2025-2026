@@ -189,15 +189,15 @@ void solve_matheuristic(instance *inst, double p)
 
 void solve_local_branching(instance *inst)
 {
-    int n       = inst->nnodes;
+    int n = inst->nnodes;
     int n_edges = n * (n - 1) / 2;
 
     // --- Warm start: VNS for 1/10 of the total time limit ---
-    double orig_timelimit   = inst->timelimit;
-    inst->timelimit         = orig_timelimit / 10.0;
-    inst->opt_applied       = true;
+    double orig_timelimit = inst->timelimit;
+    inst->timelimit = orig_timelimit / 10.0;
+    inst->opt_applied = true;
     solve_tsp(inst, inst->start_time);
-    inst->timelimit         = orig_timelimit;
+    inst->timelimit = orig_timelimit;
     inst->timelimit_reached = false;
 
     if (inst->best_solution.tour == NULL)
@@ -213,9 +213,9 @@ void solve_local_branching(instance *inst)
     init_cplex(inst);
     build_model(inst, inst->env, inst->lp);
 
-    CPXLONG contextmask = CPX_CALLBACKCONTEXT_THREAD_UP   |
-                          CPX_CALLBACKCONTEXT_THREAD_DOWN  |
-                          CPX_CALLBACKCONTEXT_CANDIDATE    |
+    CPXLONG contextmask = CPX_CALLBACKCONTEXT_THREAD_UP |
+                          CPX_CALLBACKCONTEXT_THREAD_DOWN |
+                          CPX_CALLBACKCONTEXT_CANDIDATE |
                           CPX_CALLBACKCONTEXT_RELAXATION;
     if (CPXcallbacksetfunc(inst->env, inst->lp, contextmask, callback_driver, inst) != 0)
         printf("[LB] Error setting callback function.\n");
@@ -227,14 +227,14 @@ void solve_local_branching(instance *inst)
 
     // Warm MIP start
     {
-        int    beg[1]    = {0};
-        int    effort[1] = {CPX_MIPSTART_CHECKFEAS};
-        int   *varidx    = (int *)   malloc(n * sizeof(int));
-        double *vals     = (double *)malloc(n * sizeof(double));
+        int beg[1] = {0};
+        int effort[1] = {CPX_MIPSTART_CHECKFEAS};
+        int *varidx = (int *)malloc(n * sizeof(int));
+        double *vals = (double *)malloc(n * sizeof(double));
         for (int i = 0; i < n; i++)
         {
             varidx[i] = xpos(inst, i, succ[i]);
-            vals[i]   = 1.0;
+            vals[i] = 1.0;
         }
         CPXaddmipstarts(inst->env, inst->lp, 1, n, beg, varidx, vals, effort, NULL);
         free(varidx);
@@ -244,18 +244,18 @@ void solve_local_branching(instance *inst)
     // Separation workspace
     separationThreadWorkspace ws;
     ws.adj_capacity = 4;
-    ws.succ         = (int *)malloc(n * sizeof(int));
-    ws.comp         = (int *)malloc(n * sizeof(int));
-    ws.visited      = (int *)calloc(n, sizeof(int));
-    ws.adj_count    = (int *)calloc(n, sizeof(int));
-    ws.adj          = (int **)malloc(n * sizeof(int *));
-    ws.queue        = (int *)malloc(n * sizeof(int));
+    ws.succ = (int *)malloc(n * sizeof(int));
+    ws.comp = (int *)malloc(n * sizeof(int));
+    ws.visited = (int *)calloc(n, sizeof(int));
+    ws.adj_count = (int *)calloc(n, sizeof(int));
+    ws.adj = (int **)malloc(n * sizeof(int *));
+    ws.queue = (int *)malloc(n * sizeof(int));
     for (int i = 0; i < n; i++)
         ws.adj[i] = (int *)malloc(ws.adj_capacity * sizeof(int));
 
     double *xstar = (double *)malloc(n_edges * sizeof(double));
 
-    int k    = inst->lb_k_init;
+    int k = inst->lb_k_init;
     int iter = 0;
 
     // --- Main local branching loop ---
@@ -272,16 +272,16 @@ void solve_local_branching(instance *inst)
             int nmip = CPXgetnummipstarts(inst->env, inst->lp);
             if (nmip > 0)
                 CPXdelmipstarts(inst->env, inst->lp, 0, nmip - 1);
-            int    beg[1]    = {0};
-            int    effort[1] = {CPX_MIPSTART_CHECKFEAS};
-            int   *varidx    = (int *)   malloc(n * sizeof(int));
-            double *vals     = (double *)malloc(n * sizeof(double));
+            int beg[1] = {0};
+            int effort[1] = {CPX_MIPSTART_CHECKFEAS};
+            int *varidx = (int *)malloc(n * sizeof(int));
+            double *vals = (double *)malloc(n * sizeof(double));
             int curr = 0;
             for (int i = 0; i < n; i++)
             {
                 varidx[i] = xpos(inst, curr, succ[curr]);
-                vals[i]   = 1.0;
-                curr      = succ[curr];
+                vals[i] = 1.0;
+                curr = succ[curr];
             }
             CPXaddmipstarts(inst->env, inst->lp, 1, n, beg, varidx, vals, effort, NULL);
             free(varidx);
@@ -291,7 +291,7 @@ void solve_local_branching(instance *inst)
         // Constraint: sum_{e in x^0} x_e >= n - k
         // Built from succ (the current x^0), not inst->best_solution which only
         // updates on improvement — using succ ensures x^0 always diversifies.
-        int   *lb_idx  = (int *)   malloc(n * sizeof(int));
+        int *lb_idx = (int *)malloc(n * sizeof(int));
         double *lb_val = (double *)malloc(n * sizeof(double));
         {
             int curr = 0;
@@ -299,12 +299,12 @@ void solve_local_branching(instance *inst)
             {
                 lb_idx[i] = xpos(inst, curr, succ[curr]);
                 lb_val[i] = 1.0;
-                curr      = succ[curr];
+                curr = succ[curr];
             }
         }
-        double rhs   = (double)(n - k);
-        char   sense = 'G';
-        int    izero = 0;
+        double rhs = (double)(n - k);
+        char sense = 'G';
+        int izero = 0;
 
         int lb_row_idx = CPXgetnumrows(inst->env, inst->lp);
         if (CPXaddrows(inst->env, inst->lp, 0, 1, n,
@@ -315,7 +315,10 @@ void solve_local_branching(instance *inst)
 
         // Sub-problem time limit: 1/10 of remaining, minimum 2 s
         double sub_time = remaining / 10.0;
-        if (sub_time < 2.0) sub_time = 2.0;
+        if (sub_time < 2.0)
+            sub_time = 2.0;
+        if (sub_time > remaining)
+            sub_time = remaining;
         CPXsetdblparam(inst->env, CPX_PARAM_TILIM, sub_time);
 
         CPXmipopt(inst->env, inst->lp);
@@ -323,8 +326,8 @@ void solve_local_branching(instance *inst)
 
         bool improved = false;
 
-        if (solstat == CPXMIP_OPTIMAL      ||
-            solstat == CPXMIP_OPTIMAL_TOL   ||
+        if (solstat == CPXMIP_OPTIMAL ||
+            solstat == CPXMIP_OPTIMAL_TOL ||
             solstat == CPXMIP_TIME_LIM_FEAS)
         {
             CPXgetx(inst->env, inst->lp, xstar, 0, n_edges - 1);
@@ -348,7 +351,7 @@ void solve_local_branching(instance *inst)
                 for (int i = 0; i < n; i++)
                 {
                     new_sol.tour[i] = curr;
-                    curr            = succ[curr];
+                    curr = succ[curr];
                 }
                 update_best_solution(inst, &new_sol);
                 free(new_sol.tour);
@@ -372,7 +375,8 @@ void solve_local_branching(instance *inst)
             {
                 // Neighborhood proved locally optimal — widen search
                 k = (k + inst->lb_k_step <= inst->lb_k_max)
-                      ? k + inst->lb_k_step : inst->lb_k_max;
+                        ? k + inst->lb_k_step
+                        : inst->lb_k_max;
                 if (VERBOSE >= 2 && k != old_k)
                     printf("[LB] iter %d | Neighborhood optimal, k -> %d\n", iter, k);
             }
@@ -380,7 +384,8 @@ void solve_local_branching(instance *inst)
             {
                 // Sub-problem hit time limit — neighborhood too large, shrink
                 k = (k - inst->lb_k_step >= inst->lb_k_min)
-                      ? k - inst->lb_k_step : inst->lb_k_min;
+                        ? k - inst->lb_k_step
+                        : inst->lb_k_min;
                 if (VERBOSE >= 2 && k != old_k)
                     printf("[LB] iter %d | Time limit in sub-problem, k -> %d\n", iter, k);
             }

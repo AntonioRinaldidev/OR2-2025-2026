@@ -101,6 +101,8 @@ void *crossover_worker(void *args)
 
     for (int i = arg->start_index; i < arg->end_index; i += 2)
     {
+        if (timelimit_check(gen->inst, gen->inst->start_time))
+            break;
         int p_idx = i / 2;
         int p1 = p_idx % gen->population_size;
         int p2 = (p_idx + 1) % gen->population_size;
