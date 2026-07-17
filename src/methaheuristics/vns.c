@@ -14,12 +14,12 @@
  * @param nnodes The total number of nodes in the tour.
  * @param indexes An array of size 3 where the generated indices will be stored.
  */
-void find_3_indexes(int nnodes, int *indexes)
+void find_3_indexes(int nnodes, int *indexes, unsigned int *seed)
 {
     int i = 0;
     while (i < 3)
     {
-        indexes[i] = rand() % nnodes;
+        indexes[i] = rand_r(seed) % nnodes;
         if (i > 0) // Only check for duplicates if we have generated at least one number
         {
             for (int j = 0; j < i; j++)
@@ -59,13 +59,13 @@ void find_3_indexes(int nnodes, int *indexes)
  * @param inst Pointer to the problem instance.
  * @param sol Pointer to the solution to be mutated.
  */
-void apply_3_opt_kick(instance *inst, solution *sol)
+void apply_3_opt_kick(instance *inst, solution *sol, unsigned int *seed)
 {
     int indexes[3];
     solution new_sol = {0};
     new_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
 
-    find_3_indexes(inst->nnodes, indexes);
+    find_3_indexes(inst->nnodes, indexes, seed);
 
     int i = indexes[0];
     int j = indexes[1];
@@ -124,13 +124,13 @@ void apply_3_opt_kick(instance *inst, solution *sol)
  * @param inst Pointer to the problem instance.
  * @param sol Pointer to the solution to be mutated.
  */
-void apply_3_opt_kick_reversing(instance *inst, solution *sol)
+void apply_3_opt_kick_reversing(instance *inst, solution *sol, unsigned int *seed)
 {
     int indexes[3];
     solution new_sol = {0};
     new_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
 
-    find_3_indexes(inst->nnodes, indexes);
+    find_3_indexes(inst->nnodes, indexes, seed);
 
     int i = indexes[0];
     int j = indexes[1];
@@ -180,13 +180,13 @@ void apply_3_opt_kick_reversing(instance *inst, solution *sol)
  * @param inst Pointer to the problem instance.
  * @param sol Pointer to the solution to be mutated.
  */
-void apply_random_3_opt_kick(instance *inst, solution *sol)
+void apply_random_3_opt_kick(instance *inst, solution *sol, unsigned int *seed)
 {
     int indexes[3];
     solution new_sol = {0};
     new_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
 
-    find_3_indexes(inst->nnodes, indexes);
+    find_3_indexes(inst->nnodes, indexes, seed);
 
     int i = indexes[0];
     int j = indexes[1];
@@ -198,7 +198,7 @@ void apply_random_3_opt_kick(instance *inst, solution *sol)
         new_sol.tour[curr++] = sol->tour[x];
 
     // 2. Randomly select one of the 7 valid reconnections for the middle blocks
-    int move_type = rand() % 7;
+    int move_type = rand_r(seed) % 7;
 
     switch (move_type)
     {

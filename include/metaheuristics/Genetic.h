@@ -35,6 +35,7 @@ typedef struct
     int *freq;
     int *missing;
     int *visited_nodes;
+    unsigned int rand_seed;
 } crossover_args;
 
 typedef struct
@@ -46,8 +47,9 @@ typedef struct
     int elitism_count; // How many top solutions to keep automatically
     // bool use_2opt;     // Toggle for the memetic refinement
 } GA_Params;
+
 void crossover(const instance *inst, int *parent1, int *parent2, int *child1, int *child2);
-void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes);
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes, unsigned int *seed);
 void audit_children_and_repair(const instance *inst, int *child, int *freq, int *missing);
 void *crossover_worker(void *args);
 int compare_solutions(const void *a, const void *b);

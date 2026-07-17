@@ -6,9 +6,7 @@
 
 // TODO:
 
-//  - [ ] Add the Epsilon parameter to command line
 //  - [ ] Add multi-threading to solver
-//  - [ ] Add the direct elimination of a percentage of the population ( worst performing solutions)
 //  - [ ] Add Extra mileage (optional implementation)
 //  - [ ] Add Tabu Search (optional implementation)
 // For the thesis  we will say the algorithm, describe it, maybe pseudocode, show the results, use performance profile to choose hyperparameters

@@ -848,7 +848,8 @@ void solve_with_cplex(instance *inst)
             curr = final_ws.succ[curr];
         }
 
-        update_best_solution(inst, &sol);
+        if (sol.cost < inst->best_solution.cost - EPSILON)
+            update_best_solution(inst, &sol);
 
         free(xstar);
         free(sol.tour);

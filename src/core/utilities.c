@@ -233,41 +233,37 @@ void update_best_solution(instance *inst, solution *new_sol)
 {
     if (new_sol->cost < 1.0)
         return;
-    // 1. Thread safety is non-negotiable for live plotting
 
-    if (new_sol->cost < inst->best_solution.cost - EPSILON)
+    inst->best_solution.cost = new_sol->cost;
+
+    // Update the internal best tour
+    if (inst->best_solution.tour == NULL)
     {
-        inst->best_solution.cost = new_sol->cost;
+        inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
+    }
+    if (new_sol->tour == NULL)
+        return;
+    memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
 
-        // Update the internal best tour
-        if (inst->best_solution.tour == NULL)
+    // 2. The Live Plotting Magic
+    if (inst->gnuplot_pipe)
+    {
+        // Tell gnuplot we are sending a NEW plot
+        fprintf(inst->gnuplot_pipe, "set title 'TSP Best Cost: %.2f'\n", inst->best_solution.cost);
+        fprintf(inst->gnuplot_pipe, "plot '-' with linespoints pt 7 ps 0.5 lc rgb 'blue' title 'Current Best'\n");
+
+        for (int i = 0; i < inst->nnodes; i++)
         {
-            inst->best_solution.tour = (int *)malloc(inst->nnodes * sizeof(int));
+            int node = inst->best_solution.tour[i];
+            fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[node].xcoord, inst->vertices[node].ycoord);
         }
-        if (new_sol->tour == NULL)
-            return;
-        memcpy(inst->best_solution.tour, new_sol->tour, inst->nnodes * sizeof(int));
+        // Close the loop
+        fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[inst->best_solution.tour[0]].xcoord, inst->vertices[inst->best_solution.tour[0]].ycoord);
 
-        // 2. The Live Plotting Magic
-        if (inst->gnuplot_pipe)
-        {
-            // Tell gnuplot we are sending a NEW plot
-            fprintf(inst->gnuplot_pipe, "set title 'TSP Best Cost: %.2f'\n", inst->best_solution.cost);
-            fprintf(inst->gnuplot_pipe, "plot '-' with linespoints pt 7 ps 0.5 lc rgb 'blue' title 'Current Best'\n");
+        fprintf(inst->gnuplot_pipe, "e\n"); // End of data for THIS plot
 
-            for (int i = 0; i < inst->nnodes; i++)
-            {
-                int node = inst->best_solution.tour[i];
-                fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[node].xcoord, inst->vertices[node].ycoord);
-            }
-            // Close the loop
-            fprintf(inst->gnuplot_pipe, "%lf %lf\n", inst->vertices[inst->best_solution.tour[0]].xcoord, inst->vertices[inst->best_solution.tour[0]].ycoord);
-
-            fprintf(inst->gnuplot_pipe, "e\n"); // End of data for THIS plot
-
-            // 3. FORCE the data through the pipe
-            fflush(inst->gnuplot_pipe);
-        }
+        // 3. FORCE the data through the pipe
+        fflush(inst->gnuplot_pipe);
     }
 
 } /**
@@ -293,6 +289,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->ga_applied = false;               // Genetic Algorithm off by default
     inst->population_size = 100;
     inst->use_cplex = false;
+
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
     inst->timelimit = INF; // How long the solver is allowed to run before it is terminated
@@ -385,7 +382,13 @@ void parse_command_line(int argc, char **argv, instance *inst)
                 print_error(" population size must be a positive integer");
             continue;
         }
-
+        if (strcmp(argv[i], "-epsilon") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error(" missing value for -epsilon");
+            EPSILON = atof(argv[++i]);
+            continue;
+        }
         // Crossover type
         if (strcmp(argv[i], "-ox1") == 0)
         {
@@ -506,6 +509,9 @@ void parse_command_line(int argc, char **argv, instance *inst)
         print_error("You must specify an input mode: either -file <path> or (-seed <n> and -node_number <n>).");
     }
 
+    if (EPSILON <= 0)
+        print_error("-epsilon must be > 0");
+
     if (help)
     {
         printf(COLOR_ORANGE);
@@ -527,6 +533,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -cplex              Use CPLEX to solve the problem to optimality\n");
         printf("  -seed <n>           Set the random seed for reproducible results\n");
         printf("  -time_limit <s>     Maximum execution time in seconds before termination\n");
+        printf("  -epsilon <n>        Set the epsilon value for the solver.\n");
 
         printf("\nOPTIMIZATION HEURISTICS:\n");
         printf("  -2opt               Apply 2-opt local search heuristic\n");
@@ -569,6 +576,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -time_limit <s>     : Infinity\n");
         else
             printf("  -time_limit <s>     : %.3f sec\n", inst->timelimit);
+        printf("  -epsilon <n>        : %g\n", EPSILON);
         printf(COLOR_MAGENTA "\nOPTIMIZATION HEURISTICS:\n" COLOR_RESET);
         if (inst->opt_applied)
             printf("  -2opt               : Applied\n");

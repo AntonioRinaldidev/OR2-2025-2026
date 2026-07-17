@@ -34,14 +34,14 @@ void crossover(const instance *inst, int *parent1, int *parent2, int *child1, in
  * @param child The child solution to be generated.
  * @param visited_nodes A boolean array to keep track of nodes already visited in the child.
  */
-void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes)
+void ox1_crossover(const instance *inst, int *parent1, int *parent2, int *child, int *visited_nodes, unsigned int *seed)
 {
     if (!child)
         return;
     int nnodes = inst->nnodes;
     memset(visited_nodes, 0, nnodes * sizeof(int));
-    int a = rand() % nnodes;
-    int b = rand() % nnodes;
+    int a = rand_r(seed) % nnodes;
+    int b = rand_r(seed) % nnodes;
     if (a > b)
         swap(&a, &b);
 
@@ -121,9 +121,9 @@ void *crossover_worker(void *args)
             // OX1 crossover guarantees permutation safety, so we skip the repair step.
             // It processes one child at a time, so we alternate the parent order.
             if (child1)
-                ox1_crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1, arg->visited_nodes);
+                ox1_crossover(gen->inst, gen->population[p1].tour, gen->population[p2].tour, child1, arg->visited_nodes, &arg->rand_seed);
             if (child2)
-                ox1_crossover(gen->inst, gen->population[p2].tour, gen->population[p1].tour, child2, arg->visited_nodes);
+                ox1_crossover(gen->inst, gen->population[p2].tour, gen->population[p1].tour, child2, arg->visited_nodes, &arg->rand_seed);
         }
 
         if (child1)
@@ -194,6 +194,7 @@ void natural_selection(generation *gen, generation *new_gen)
         args[t].freq = (int *)malloc(gen->inst->nnodes * sizeof(int));
         args[t].missing = (int *)malloc(gen->inst->nnodes * sizeof(int));
         args[t].visited_nodes = (int *)malloc(gen->inst->nnodes * sizeof(int));
+        args[t].rand_seed = (unsigned int)(gen->inst->randomseed + t);
 
         pthread_create(&threads[t], NULL, crossover_worker, &args[t]);
     }
@@ -351,7 +352,8 @@ void run_genetic_algorithm(instance *inst)
 
     printf(COLOR_YELLOW "[GA-END]" COLOR_RESET " Total Generations: %d | Final Cost: %.2f\n", g, best_cost_ever);
 
-    update_best_solution(inst, current_gen->champion);
+    if (current_gen->champion->cost < inst->best_solution.cost - EPSILON)
+        update_best_solution(inst, current_gen->champion);
 
     free_generation(current_gen);
     free_generation(next_gen);

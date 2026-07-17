@@ -87,6 +87,7 @@ typedef struct
 typedef struct
 {
     instance *inst;
+    unsigned int rand_seed;
     int start; // primo start_node di questo thread
     int end;   // ultimo start_node di questo thread
     double start_time;

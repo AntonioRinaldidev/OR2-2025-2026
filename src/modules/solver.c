@@ -31,7 +31,7 @@ void apply_2opt_local_search(instance *inst, solution *sol, double start_time)
  * @param sol Pointer to the solution to be refined.
  * @param start_time The starting time of the refinement process (in seconds).
  */
-void refine_solution(instance *inst, solution *sol, double start_time)
+void refine_solution(instance *inst, solution *sol, double start_time, unsigned int *seed)
 {
     if (!inst->opt_applied)
         return;
@@ -74,7 +74,7 @@ void refine_solution(instance *inst, solution *sol, double start_time)
         working_sol.cost = sol->cost;
 
         // Kick and descend
-        apply_random_3_opt_kick(inst, &working_sol);
+        apply_random_3_opt_kick(inst, &working_sol, seed);
         apply_2opt_local_search(inst, &working_sol, start_time);
         working_sol.cost = calculate_cost(inst, working_sol.tour);
 
@@ -119,7 +119,7 @@ void *solver_worker(void *args)
         if (!is_tour_feasible(&current_sol, arg->inst))
             continue;
 
-        refine_solution(arg->inst, &current_sol, arg->start_time);
+        refine_solution(arg->inst, &current_sol, arg->start_time, &arg->rand_seed);
 
         if (current_sol.cost < arg->best.cost - EPSILON)
         {
@@ -136,8 +136,14 @@ void solve_tsp(instance *inst, double start_time)
 {
     int num_threads;
     if (inst->num_threads <= 0)
-        num_threads = (int)sysconf(_SC_NPROCESSORS_ONLN); // Default to number of cores
-    num_threads = inst->num_threads;
+    {
+        long detected = sysconf(_SC_NPROCESSORS_ONLN);
+        num_threads = (detected > 0) ? (int)detected : 4;
+    }
+    else
+    {
+        num_threads = inst->num_threads;
+    }
 
     // Cap threads to number of nodes
     if (num_threads > inst->nnodes)
@@ -156,6 +162,7 @@ void solve_tsp(instance *inst, double start_time)
         args[t].start_time = start_time;
         args[t].start = current_start;
         args[t].end = current_start + nodes_per_thread + (t < remainder ? 1 : 0);
+        args[t].rand_seed = (unsigned int)(inst->randomseed + t);
         args[t].best.tour = NULL;
         args[t].best.cost = INF;
         current_start = args[t].end;
@@ -185,6 +192,7 @@ void solve_tsp(instance *inst, double start_time)
 }
 void fill_solution_pool(instance *inst, double start_time)
 {
+    unsigned int local_seed = (unsigned int)inst->randomseed;
 
     solution current_sol;
     current_sol.tour = (int *)calloc(inst->nnodes, sizeof(int));
@@ -222,7 +230,7 @@ void fill_solution_pool(instance *inst, double start_time)
             }
             continue;
         }
-        refine_solution(inst, &current_sol, start_time);
+        refine_solution(inst, &current_sol, start_time, &local_seed);
         if (current_sol.cost < inst->best_solution.cost - EPSILON)
         {
             update_best_solution(inst, &current_sol);
