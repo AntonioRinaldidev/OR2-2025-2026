@@ -495,15 +495,24 @@ void parse_command_line(int argc, char **argv, instance *inst)
     int file_mode = (strcmp(inst->input_file, "NULL") != 0);
     int seed_set = (inst->randomseed != -1);
     int nodes_set = (inst->nnodes > 0);
+    int needs_seed_for_algorithm = inst->ga_applied ||
+                                   (!inst->use_cplex && !inst->use_local_branching && !inst->use_matheuristic && inst->opt_applied);
 
-    if (file_mode && (seed_set || nodes_set))
+    if (file_mode && nodes_set)
     {
-        print_error("Cannot use file mode (-file) with random generation flags (-seed, -node_number).");
+        print_error("Cannot use file mode (-file) with -node_number (node count comes from the file).");
     }
+
+    if (file_mode && needs_seed_for_algorithm && !seed_set)
+    {
+        print_error("-seed is required when using the default solver (VNS/2-opt) or -ga, even in file mode.");
+    }
+
     if (!file_mode && (seed_set != nodes_set))
     {
         print_error("-seed and -node_number must be used together.");
     }
+
     if (!file_mode && !seed_set && !help)
     {
         print_error("You must specify an input mode: either -file <path> or (-seed <n> and -node_number <n>).");
