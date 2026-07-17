@@ -257,8 +257,8 @@ void natural_selection(generation *gen, generation *new_gen)
     //  7. Random selection for the remaining children
     for (int i = elites + 1; i < pop_size; i++)
     {
-        int best_idx = -1;
-        double best_cost = INF;
+        int best_idx = elites;
+        double best_cost = pool[elites].cost;
 
         for (int t = 0; t < gen->inst->tournament_strength; t++)
         {

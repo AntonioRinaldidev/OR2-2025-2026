@@ -6,7 +6,6 @@
 
 // TODO:
 
-//  - [ ] Add multi-threading to solver
 //  - [ ] Add Extra mileage (optional implementation)
 //  - [ ] Add Tabu Search (optional implementation)
 // For the thesis  we will say the algorithm, describe it, maybe pseudocode, show the results, use performance profile to choose hyperparameters
