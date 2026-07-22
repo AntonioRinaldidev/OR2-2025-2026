@@ -279,6 +279,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     }
 
     strcpy(inst->input_file, "NULL");
+    inst->generate_only = false;
 
     inst->num_threads = 0;                  // Controls parallel processing (0 means automatic detection of available cores)
     inst->nnodes = 0;                       // Number of nodes for random generation
@@ -500,6 +501,12 @@ void parse_command_line(int argc, char **argv, instance *inst)
             continue;
         }
 
+        if (strcmp(argv[i], "-generate_only") == 0)
+        {
+            inst->generate_only = true;
+            continue;
+        }
+
         // Verbosity level
         if (strcmp(argv[i], "-verbose") == 0 || strcmp(argv[i], "-v") == 0)
         {
@@ -539,7 +546,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
         print_error("-seed and -node_number must be used together.");
     }
 
-    if (!file_mode && !seed_set && !help)
+    if (!file_mode && !seed_set && !help && !inst->generate_only)
     {
         print_error("You must specify an input mode: either -file <path> or (-seed <n> and -node_number <n>).");
     }
@@ -1034,4 +1041,40 @@ void generate_random_instance(instance *inst, double x_max, double y_max)
         inst->vertices[i].xcoord = ((double)rand() / RAND_MAX) * x_max;
         inst->vertices[i].ycoord = ((double)rand() / RAND_MAX) * y_max;
     }
+}
+
+/**
+ * Saves the generated instance to a TSPLIB-format .tsp file.
+ * Call this right after generate_random_instance(), before any solver runs.
+ *
+ * @param inst      The instance containing generated vertices.
+ * @param filepath  Full output path, e.g. "data/generated/rand_n500_seed42.tsp"
+ * @return 0 on success, -1 on failure.
+ */
+int save_instance_to_tsp(instance *inst, const char *filepath)
+{
+    FILE *f = fopen(filepath, "w");
+    if (f == NULL)
+    {
+        fprintf(stderr, "ERROR: could not open '%s' for writing.\n", filepath);
+        return -1;
+    }
+
+    fprintf(f, "NAME: %s\n", filepath);
+    fprintf(f, "TYPE: TSP\n");
+    fprintf(f, "COMMENT: Randomly generated instance (seed=%d)\n", inst->randomseed);
+    fprintf(f, "DIMENSION: %d\n", inst->nnodes);
+    fprintf(f, "EDGE_WEIGHT_TYPE: EUC_2D\n");
+    fprintf(f, "NODE_COORD_SECTION\n");
+
+    for (int i = 0; i < inst->nnodes; i++)
+    {
+        // TSPLIB convention: 1-indexed node IDs
+        fprintf(f, "%d %.6f %.6f\n", i + 1, inst->vertices[i].xcoord, inst->vertices[i].ycoord);
+    }
+
+    fprintf(f, "EOF\n");
+
+    fclose(f);
+    return 0;
 }

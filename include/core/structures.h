@@ -50,6 +50,7 @@ typedef struct
     double *dists; // Flattened 2D array for distance matrix
 
     int randomseed;
+    bool generate_only;
 
     double timelimit;
     bool timelimit_reached;

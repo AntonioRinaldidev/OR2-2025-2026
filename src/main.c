@@ -33,10 +33,39 @@ int main(int argc, char **argv)
     {
         parse_instance(&inst);
     }
-    else if (inst.nnodes > 0)
+    else if (inst.nnodes > 0 && !inst.generate_only)
     {
 
         generate_random_instance(&inst, 1000.0, 1000.0);
+    }
+
+    if (inst.generate_only)
+    {
+        int seeds[] = {1, 2, 3, 4, 5};
+        int sizes[] = {50, 150, 300, 500, 1000};
+
+        for (int s = 0; s < 5; s++)
+        {
+            for (int k = 0; k < 5; k++)
+            {
+                if (inst.vertices != NULL)
+                {
+                    free(inst.vertices);
+                    inst.vertices = NULL;
+                }
+
+                inst.nnodes = sizes[k];
+                inst.randomseed = seeds[s];
+                generate_random_instance(&inst, 1000, 1000);
+
+                char filename[256];
+                snprintf(filename, sizeof(filename), "data/generated/rand_n%d_seed%d.tsp", inst.nnodes, inst.randomseed);
+                save_instance_to_tsp(&inst, filename);
+            }
+        }
+
+        free_instance(&inst);
+        exit(0);
     }
 
     compute_distances(&inst);

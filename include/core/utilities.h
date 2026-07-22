@@ -81,4 +81,5 @@ static inline double dist_sq(int i, int j, instance *inst)
 
 // --- INSTANCES RANDOM GENERATOR ---
 void generate_random_instance(instance *inst, double x_max, double y_max);
+int save_instance_to_tsp(instance *inst, const char *filepath);
 #endif
