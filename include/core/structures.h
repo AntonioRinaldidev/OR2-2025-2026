@@ -40,7 +40,9 @@ typedef enum
 {
     CONSTRUCT_GREEDY = 0,
     CONSTRUCT_CARDINALITY_GRASP = 1,
-    CONSTRUCT_VALUE_GRASP = 2
+    CONSTRUCT_VALUE_GRASP = 2,
+    CONSTRUCT_EXTRA_MILEAGE = 3
+
 } ConstructionType;
 
 typedef struct
@@ -71,6 +73,10 @@ typedef struct
 
     bool opt_applied;
     char opt_name[50];
+
+    bool use_tabu;
+    int tabu_tenure;               // <= 0 means "auto: max(n/10, 5)"
+    int tabu_max_iters_no_improve; // <= 0 means "auto: 1000"
 
     bool ga_applied;
     int population_size;

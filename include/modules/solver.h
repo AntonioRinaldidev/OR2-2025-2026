@@ -3,7 +3,8 @@
 #include <time.h>
 #include "core/structures.h"
 #include "core/utilities.h"
-#include "construction/NearestN.h"
+#include "construction/construction.h"
+#include "metaheuristics/tabu.h"
 #include "heuristics/2_opt.h"
 #include "metaheuristics/vns.h"
 #include "metaheuristics/genetic.h"

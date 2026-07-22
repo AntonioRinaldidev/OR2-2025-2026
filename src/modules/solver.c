@@ -123,6 +123,9 @@ void *solver_worker(void *args)
         case CONSTRUCT_VALUE_GRASP:
             value_based_grasp(arg->inst, arg->inst->grasp_alpha, &current_sol, start_node, &arg->rand_seed);
             break;
+        case CONSTRUCT_EXTRA_MILEAGE:
+            extra_mileage(arg->inst, &current_sol, start_node);
+            break;
         default:
             greedyNN(arg->inst, &current_sol, start_node);
             break;
@@ -131,7 +134,10 @@ void *solver_worker(void *args)
         if (!is_tour_feasible(&current_sol, arg->inst))
             continue;
 
-        refine_solution(arg->inst, &current_sol, arg->start_time, &arg->rand_seed);
+        if (arg->inst->use_tabu)
+            run_tabu_search(arg->inst, &current_sol, arg->start_time, &arg->rand_seed);
+        else
+            refine_solution(arg->inst, &current_sol, arg->start_time, &arg->rand_seed);
 
         if (current_sol.cost < arg->best.cost - EPSILON)
         {
@@ -233,6 +239,9 @@ void fill_solution_pool(instance *inst, double start_time)
         case CONSTRUCT_VALUE_GRASP:
             value_based_grasp(inst, inst->grasp_alpha, &current_sol, start_node, &local_seed);
             break;
+        case CONSTRUCT_EXTRA_MILEAGE:
+            extra_mileage(inst, &current_sol, start_node);
+            break;
         default:
             greedyNN(inst, &current_sol, start_node);
             break;
@@ -253,7 +262,11 @@ void fill_solution_pool(instance *inst, double start_time)
             }
             continue;
         }
-        refine_solution(inst, &current_sol, start_time, &local_seed);
+        if (inst->use_tabu)
+            run_tabu_search(inst, &current_sol, start_time, &local_seed);
+        else
+            refine_solution(inst, &current_sol, start_time, &local_seed);
+
         if (current_sol.cost < inst->best_solution.cost - EPSILON)
         {
             update_best_solution(inst, &current_sol);

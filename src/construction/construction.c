@@ -1,4 +1,4 @@
-#include "construction/NearestN.h"
+#include "construction/construction.h"
 #include "core/utilities.h"
 
 /**
@@ -69,6 +69,89 @@ void greedyNN(instance *inst, solution *sol, int start_node)
     sol->cost += dist(path[n - 1], path[0], inst);
 }
 
+void extra_mileage(instance *inst, solution *sol, int start_node)
+{
+    if (start_node < 0 || start_node >= inst->nnodes)
+        print_error("Extra Mileage start node is out of bounds");
+
+    int n = inst->nnodes;
+    int *path = sol->tour;
+    int temp;
+
+    // 1. Initialize path with all nodes 0..n-1.
+    for (int i = 0; i < n; i++)
+        path[i] = i;
+
+    // 2. Move start_node to position 0.
+    temp = path[0];
+    path[0] = path[start_node];
+    path[start_node] = temp;
+
+    // 3. Find the farthest node from start_node among the rest, move it to position 1.
+    //    Uses dist (not dist_sq): unlike a single nearest-neighbor comparison,
+    //    extra mileage compares SUMS of distances later on, and A^2+B^2 < C^2+D^2
+    //    does not imply A+B < C+D -- same pitfall documented for 2-opt.
+    int farthest_pos = 1;
+    double best_d = dist(path[0], path[1], inst);
+    for (int k = 2; k < n; k++)
+    {
+        double d = dist(path[0], path[k], inst);
+        if (d > best_d)
+        {
+            best_d = d;
+            farthest_pos = k;
+        }
+    }
+    temp = path[1];
+    path[1] = path[farthest_pos];
+    path[farthest_pos] = temp;
+
+    // path[0..1] is now the initial 2-node "cycle" (start_node -> farthest -> start_node);
+    // path[2..n-1] holds the unvisited nodes.
+    int tour_size = 2;
+    sol->cost = 2.0 * dist(path[0], path[1], inst); // there-and-back
+
+    // 4. Cheapest-insertion loop.
+    while (tour_size < n)
+    {
+        int best_cand_pos = -1;     // index (>= tour_size) in path of the chosen unvisited node
+        int best_insert_after = -1; // insert into the edge (path[t], path[(t+1) % tour_size])
+        double best_extra = INF;
+
+        for (int cand = tour_size; cand < n; cand++)
+        {
+            int k = path[cand];
+            for (int t = 0; t < tour_size; t++)
+            {
+                int i = path[t];
+                int j = path[(t + 1) % tour_size];
+                double extra = dist(i, k, inst) + dist(k, j, inst) - dist(i, j, inst);
+                if (extra < best_extra)
+                {
+                    best_extra = extra;
+                    best_cand_pos = cand;
+                    best_insert_after = t;
+                }
+            }
+        }
+
+        // Swap the chosen candidate to the tour/unvisited boundary slot.
+        temp = path[tour_size];
+        path[tour_size] = path[best_cand_pos];
+        path[best_cand_pos] = temp;
+        int chosen_node = path[tour_size];
+
+        // Shift the tail of the tour right by one to open up the insertion point,
+        // then splice the chosen node in.
+        int insert_at = best_insert_after + 1;
+        for (int shift = tour_size; shift > insert_at; shift--)
+            path[shift] = path[shift - 1];
+        path[insert_at] = chosen_node;
+
+        sol->cost += best_extra;
+        tour_size++;
+    }
+}
 void cardinality_grasp(instance *inst, solution *sol, int cardinality, int start_node, unsigned int *seed)
 {
     if (start_node < 0 || start_node >= inst->nnodes)

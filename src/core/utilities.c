@@ -292,7 +292,11 @@ void parse_command_line(int argc, char **argv, instance *inst)
     inst->use_cplex = false;
     inst->construction_type = CONSTRUCT_GREEDY; // Default to plain Greedy NN
     inst->grasp_cardinality = 5;                // Default RCL size for cardinality GRASP
-    inst->grasp_alpha = 0.3;                    // Default RCL threshold fraction for value-based GRASP
+    inst->grasp_alpha = 0.3;
+    // Default RCL threshold fraction for value-based GRASP
+    inst->use_tabu = false;
+    inst->tabu_tenure = -1;
+    inst->tabu_max_iters_no_improve = -1;
 
     // Optimization Constraints
     inst->randomseed = -1; // Seed for random number generation, useful for reproducibility
@@ -381,6 +385,11 @@ void parse_command_line(int argc, char **argv, instance *inst)
                 print_error(" -value_grasp alpha must be between 0 and 1");
             continue;
         }
+        if (strcmp(argv[i], "-extra_mileage") == 0)
+        {
+            inst->construction_type = CONSTRUCT_EXTRA_MILEAGE;
+            continue;
+        }
 
         // Percentage of elites
         if (strcmp(argv[i], "-elites") == 0)
@@ -445,6 +454,26 @@ void parse_command_line(int argc, char **argv, instance *inst)
                 print_error("tournament strength must be in range [1,3]");
             }
             inst->tournament_strength = temp;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-tabu") == 0)
+        {
+            inst->use_tabu = true;
+            continue;
+        }
+        if (strcmp(argv[i], "-tabu_tenure") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -tabu_tenure");
+            inst->tabu_tenure = atoi(argv[++i]);
+            continue;
+        }
+        if (strcmp(argv[i], "-tabu_max_stall") == 0)
+        {
+            if (i + 1 >= argc)
+                print_error("missing value for -tabu_max_stall");
+            inst->tabu_max_iters_no_improve = atoi(argv[++i]);
             continue;
         }
 
@@ -527,7 +556,7 @@ void parse_command_line(int argc, char **argv, instance *inst)
     int file_mode = (strcmp(inst->input_file, "NULL") != 0);
     int seed_set = (inst->randomseed != -1);
     int nodes_set = (inst->nnodes > 0);
-    int needs_seed_for_algorithm = inst->ga_applied ||
+    int needs_seed_for_algorithm = inst->ga_applied || inst->use_tabu ||
                                    inst->construction_type != CONSTRUCT_GREEDY ||
                                    (!inst->use_cplex && !inst->use_local_branching &&
                                     !inst->use_matheuristic && inst->opt_applied);
@@ -539,6 +568,10 @@ void parse_command_line(int argc, char **argv, instance *inst)
     if (file_mode && needs_seed_for_algorithm && !seed_set)
     {
         print_error("-seed is required when using the default solver (VNS/2-opt) or -ga, even in file mode.");
+    }
+    if (inst->use_tabu && inst->opt_applied)
+    {
+        print_error("-tabu and -2opt cannot be used together: Tabu Search already runs its own 2-opt-based local search and fully replaces the VNS/2-opt refinement step.");
     }
 
     if (!file_mode && (seed_set != nodes_set))
@@ -588,9 +621,14 @@ void parse_command_line(int argc, char **argv, instance *inst)
         printf("  -ox1                Use Order Crossover (OX1) instead of naive crossover in Genetic Algorithm\n");
         printf("  -cardinality_grasp <k>  Use Cardinality GRASP construction with RCL size k\n");
         printf("  -value_grasp <alpha>    Use Value-based GRASP construction with RCL threshold alpha (0-1)\n");
+        printf("  -extra_mileage          Use Extra Mileage (farthest-pair cheapest insertion) construction\n");
 
         printf("\nMATEHEURISTICS:\n");
         printf("  -matheuristic       Enable the Matheuristic metaheuristic\n");
+        printf("\nTABU SEARCH:\n");
+        printf("  -tabu                Enable Tabu Search local search\n");
+        printf("  -tabu_tenure <n>     Tabu tenure in iterations (default: auto = max(n/10, 5))\n");
+        printf("  -tabu_max_stall <n>  Stop after n non-improving iterations (default: 1000)\n");
         printf("\n");
         printf("----------------------------------------------------------------------\n");
         printf(COLOR_RESET);
@@ -633,6 +671,8 @@ void parse_command_line(int argc, char **argv, instance *inst)
             printf("  -cardinality_grasp  : k = %d\n", inst->grasp_cardinality);
         else if (inst->construction_type == CONSTRUCT_VALUE_GRASP)
             printf("  -value_grasp        : alpha = %.2f\n", inst->grasp_alpha);
+        else if (inst->construction_type == CONSTRUCT_EXTRA_MILEAGE)
+            printf("  -extra_mileage      : Applied\n");
         else
             printf("  construction        : Greedy NN (default)\n");
 
@@ -651,6 +691,13 @@ void parse_command_line(int argc, char **argv, instance *inst)
         }
         else
             printf("  -ga                 : Not applied\n");
+
+        printf(COLOR_MAGENTA "\nTABU SEARCH:\n" COLOR_RESET);
+        if (inst->use_tabu)
+            printf("  -tabu               : Applied (tenure=%s, max_stall=%s)\n",
+                   inst->tabu_tenure > 0 ? "custom" : "auto", inst->tabu_max_iters_no_improve > 0 ? "custom" : "auto");
+        else
+            printf("  -tabu               : Not applied\n");
 
         printf(COLOR_MAGENTA "\nMATEHEURISTICS:\n" COLOR_RESET);
         if (inst->use_matheuristic)
@@ -765,10 +812,31 @@ void log_result(instance *inst)
 {
     // Build algorithm name from instance flags
     char algo_name[256];
+    char constr_suffix[64] = ""; // empty for plain greedy construction -- preserves the original "GreedyNN"/"VNS_2opt" filenames
+
+    switch (inst->construction_type)
+    {
+    case CONSTRUCT_CARDINALITY_GRASP:
+        snprintf(constr_suffix, sizeof(constr_suffix), "_GRASPcard%d", inst->grasp_cardinality);
+        break;
+    case CONSTRUCT_VALUE_GRASP:
+        snprintf(constr_suffix, sizeof(constr_suffix), "_GRASPval%.2f", inst->grasp_alpha);
+        break;
+    case CONSTRUCT_EXTRA_MILEAGE:
+        snprintf(constr_suffix, sizeof(constr_suffix), "_ExtraMileage");
+        break;
+    default:
+        break; // CONSTRUCT_GREEDY: no suffix
+    }
 
     if (inst->use_cplex)
     {
         snprintf(algo_name, sizeof(algo_name), "CPLEX");
+    }
+    else if (inst->use_local_branching)
+    {
+        snprintf(algo_name, sizeof(algo_name), "LocalBranching_k%d_step%d_min%d_max%d",
+                 inst->lb_k_init, inst->lb_k_step, inst->lb_k_min, inst->lb_k_max);
     }
     else if (inst->use_matheuristic)
     {
@@ -781,13 +849,18 @@ void log_result(instance *inst)
                  cx, inst->population_size, inst->percentage_elites,
                  inst->percentage_discard, inst->tournament_strength);
     }
+    else if (inst->use_tabu)
+    {
+        int effective_tenure = (inst->tabu_tenure > 0) ? inst->tabu_tenure : ((inst->nnodes / 10 > 5) ? inst->nnodes / 10 : 5);
+        snprintf(algo_name, sizeof(algo_name), "Tabu_tenure%d%s", effective_tenure, constr_suffix);
+    }
     else if (inst->opt_applied)
     {
-        snprintf(algo_name, sizeof(algo_name), "VNS_2opt");
+        snprintf(algo_name, sizeof(algo_name), "VNS_2opt%s", constr_suffix);
     }
     else
     {
-        snprintf(algo_name, sizeof(algo_name), "GreedyNN");
+        snprintf(algo_name, sizeof(algo_name), "GreedyNN%s", constr_suffix);
     }
 
     char inst_name[256];
@@ -826,7 +899,6 @@ void log_result(instance *inst)
 
     fclose(f);
 }
-
 /**
  * Pre-computes the distance matrix for the instance.
  * Stores the result in inst->dists.
